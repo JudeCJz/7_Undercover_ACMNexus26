@@ -28,18 +28,17 @@ function checkUrlSafe(urlStr, blacklist, keywords) {
 
   // Check blacklist
   if (blacklist.some(b => domain.includes(toLowerCaseSafe(b)) || lowerUrl.includes(toLowerCaseSafe(b)))) {
-    return { safe: false, reason: "This domain/URL is blacklisted" };
+    return { safe: false, reason: "Threat: Blacklisted Domain" };
   }
 
-  // Check suspicious keywords (basic heuristic)
+  // Check suspicious keywords
   let keywordCount = 0;
   for (let kw of keywords) {
     if (lowerUrl.includes(toLowerCaseSafe(kw))) keywordCount++;
   }
   
-  // If it has keywords and links externally, mark as suspicious
   if (keywordCount >= 1 && domain !== "" && domain !== window.location.hostname) {
-    return { safe: false, reason: "Contains suspicious keyword on external domain" };
+    return { safe: false, reason: "Threat: Obfuscated Phishing Keywords" };
   }
 
   return { safe: true };
@@ -50,7 +49,7 @@ function showDangerousBanner() {
   banner.className = "lss-banner";
   
   const text = document.createElement("span");
-  text.textContent = "⚠️ WARNING: This website has been flagged as DANGEROUS by your local blacklist. Proceed with caution! ";
+  text.textContent = "⚠️ SENTINEL ALERT: This website is a known security hazard. Proceeding is high-risk! ";
   
   const closeBtn = document.createElement("span");
   closeBtn.className = "lss-banner-close";
@@ -63,7 +62,6 @@ function showDangerousBanner() {
 }
 
 function scanPage(blacklist, whitelist, keywords) {
-  // Check current page
   const currentDomain = window.location.hostname;
   if (!whitelist.includes(currentDomain)) {
     if (blacklist.some(b => currentDomain.includes(toLowerCaseSafe(b)))) {
@@ -72,7 +70,6 @@ function scanPage(blacklist, whitelist, keywords) {
     }
   }
 
-  // Scan all links
   const links = document.querySelectorAll("a");
   totalLinks = links.length;
 
@@ -84,7 +81,6 @@ function scanPage(blacklist, whitelist, keywords) {
       unsafeLinks++;
       link.classList.add("lss-unsafe-link");
       
-      // Tooltip logic
       link.addEventListener("mouseenter", (e) => {
         const tooltip = document.createElement("div");
         tooltip.className = "lss-tooltip";
@@ -104,7 +100,6 @@ function scanPage(blacklist, whitelist, keywords) {
     }
   });
 
-  // Determine status for icon
   let status = "SAFE";
   if (isCurrentSiteDangerous) {
     status = "DANGER";
@@ -115,7 +110,21 @@ function scanPage(blacklist, whitelist, keywords) {
   chrome.runtime.sendMessage({ type: "UPDATE_STATUS", status: status });
 }
 
-// Listen for popup requests
+// Global initialization
+chrome.storage.local.get(["blacklist", "whitelist", "keywords", "isScanningEnabled"], (res) => {
+  if (res.isScanningEnabled === false) return; // Scanning is disabled
+
+  const blacklist = res.blacklist || [];
+  const whitelist = res.whitelist || [];
+  const keywords = res.keywords || [];
+  
+  if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => scanPage(blacklist, whitelist, keywords));
+  } else {
+      scanPage(blacklist, whitelist, keywords);
+  }
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "GET_STATS") {
     sendResponse({
@@ -123,19 +132,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       unsafeLinks: unsafeLinks,
       isCurrentSiteDangerous: isCurrentSiteDangerous
     });
-  }
-});
-
-// Start scanning
-chrome.storage.local.get(["blacklist", "whitelist", "keywords"], (res) => {
-  const blacklist = res.blacklist || [];
-  const whitelist = res.whitelist || [];
-  const keywords = res.keywords || [];
-  
-  // Wait a bit for DOM or run immediately
-  if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => scanPage(blacklist, whitelist, keywords));
-  } else {
-      scanPage(blacklist, whitelist, keywords);
   }
 });

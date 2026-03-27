@@ -73,3 +73,23 @@
 
 ### Issues Faced
 - Migration of existing prototypes into the structured hackathon template while maintaining consistency.
+
+## 19:22
+
+### Features Added
+- Redesigned the extension popup into a premium "Sentinel One" cybersecurity dashboard.
+- Implemented a local database manager in the popup to view and remove blacklisted domains.
+- Added a global "Security Toggle" to enable or disable scanning in real-time.
+- Developed a comprehensive "Test Harness" (`test-safe.html`) with varied link scenarios to verify detection.
+- Fixed UI encoding issues with system emojis by transitioning to a more robust CSS/SVG approach.
+
+### Files Modified
+- LinkSafetyScanner/popup.html (Full UI overhaul)
+- LinkSafetyScanner/popup.js (Stat fetching, database management, and toggle logic)
+- LinkSafetyScanner/content.js (Support for global toggle and improved alerts)
+- LinkSafetyScanner/test-safe.html (Added new test environment)
+- CHANGELOG.md (Updated timeline)
+
+### Issues Faced
+- Synchronizing the real-time scan state across content scripts and the new dashboard popup.
+- Ensuring consistent UI rendering across different Chromium-based browsers (Edge/Brave).
