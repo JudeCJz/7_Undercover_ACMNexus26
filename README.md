@@ -23,16 +23,16 @@ A **16-hour hackathon** across various domains where innovation meets execution.
 
 ```md
 ### 🏷️ Project Name:
-Vigil-X Sentinel
+Link Safety Scanner
 
 ### 🎯 Chosen Domain:
 5️⃣ Cybersecurity & Threat Intelligence
 
 ### ❗ Problem Statement:
-Conventional security systems are static and easily bypassed by new, evolving threats that hide in massive volumes of log data, making disruption inevitable.
+Users frequently encounter malicious links and phishing attempts while browsing, struggling to manually verify the safety of URLs leading to potential data breaches.
 
 ### 💡 Solution:
-An AI-Native Adaptive Defense system. It analyzes behavioral signals from system logs, autonomously flags suspicious patterns using an LLM-based reasoning engine, and visualizes the attack surface in a premium, real-time command center dashboard.
+A Browser Extension that locally scans websites for unsafe links against a database of blacklisted domains and keywords. It provides visual cues (red highlights), hover tooltips, and dangerous site banners to ensure a safe browsing experience without compromising user privacy.
 ```
 
 ---

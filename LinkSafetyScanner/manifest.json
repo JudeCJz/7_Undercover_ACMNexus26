@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Link Safety Scanner",
+  "version": "1.0",
+  "description": "Scans websites for unsafe links, highlights them, and checks if the current website itself is dangerous.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["styles.css"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

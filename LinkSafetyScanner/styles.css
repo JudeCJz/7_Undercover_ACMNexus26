@@ -1,0 +1,43 @@
+/* Content script styles */
+.lss-unsafe-link {
+  outline: 2px solid red !important;
+  background-color: rgba(255, 0, 0, 0.1) !important;
+  position: relative !important;
+}
+
+.lss-tooltip {
+  position: absolute;
+  background: #333;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 999999;
+  pointer-events: none;
+  font-family: sans-serif;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  white-space: nowrap;
+}
+
+.lss-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: #f44336;
+  color: white;
+  text-align: center;
+  padding: 10px;
+  font-family: sans-serif;
+  font-weight: bold;
+  z-index: 1000000;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.lss-banner-close {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+  cursor: pointer;
+  font-weight: bold;
+}

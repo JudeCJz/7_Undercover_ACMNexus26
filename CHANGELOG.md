@@ -57,3 +57,19 @@
 
 ### Issues Faced
 - Non-empty directory conflicts during Vite init; resolved by isolating to the `/frontend` directory
+
+## 18:49
+
+### Features Added
+- Integrated the core Link Safety Scanner extension logic into the Nexus repository.
+- Transitioned project scope to Cybersecurity & Threat Intelligence focused on local URL scanning.
+- Initialized progress folder (`/progress/`) with the first architectural capture.
+
+### Files Modified
+- README.md (Updated project details)
+- CHANGELOG.md (Updated timeline)
+- progress/1.png (Added initial progress capture)
+- LinkSafetyScanner/ (Migrated entire extension codebase: manifest, background, content, styles, popup)
+
+### Issues Faced
+- Migration of existing prototypes into the structured hackathon template while maintaining consistency.
