@@ -23,16 +23,16 @@ A **16-hour hackathon** across various domains where innovation meets execution.
 
 ```md
 ### 🏷️ Project Name:
-<Your Project Name>
+Vigil-X Sentinel
 
 ### 🎯 Chosen Domain:
-<One from the given domains>
+5️⃣ Cybersecurity & Threat Intelligence
 
 ### ❗ Problem Statement:
-<What problem are you solving?>
+Conventional security systems are static and easily bypassed by new, evolving threats that hide in massive volumes of log data, making disruption inevitable.
 
 ### 💡 Solution:
-<How does your project solve the problem?>
+An AI-Native Adaptive Defense system. It analyzes behavioral signals from system logs, autonomously flags suspicious patterns using an LLM-based reasoning engine, and visualizes the attack surface in a premium, real-time command center dashboard.
 ```
 
 ---

@@ -28,3 +28,17 @@
 
 ### Issues Faced
 - Initial remote image download attempt failed, resolved by using provided local files
+
+## 17:15
+
+### Features Added
+- Updated README.md with actual project details (Vigil-X Sentinel, Cybersecurity domain)
+- Finalized initial project setup for the Hackathon
+- Prepared codebase for the 4-part team split
+
+### Files Modified
+- README.md
+- CHANGELOG.md
+
+### Issues Faced
+- None
