@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     addAiMessage("user", text);
     input.value = "";
 
-    // AI Logic Engine
+    // LinPatrol AI Logic Engine
     setTimeout(() => {
       processAiResponse(text.toLowerCase());
     }, 600);
@@ -276,6 +276,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Vital for AI context: sync real-time scan data to storage
+      chrome.storage.local.set({ lastScannedLinks: response.scannedLinks || [] });
+
       let status = "SECURED";
       if (response.isScanningEnabled === false) {
         status = "DISABLED";
@@ -293,10 +296,68 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // --- Dynamic Particle Engine (tsParticles) ---
+  let particlesContainer = null;
+
+  async function initParticles() {
+    particlesContainer = await tsParticles.load({
+      id: "particles-js",
+      options: {
+        background: { color: "#080a0f" },
+        particles: {
+          number: { value: 60 },
+          color: { value: "#ffffff" },
+          links: {
+            enable: true,
+            distance: 120,
+            color: "#0088ff",
+            opacity: 0.4,
+            width: 1
+          },
+          move: {
+            enable: true,
+            speed: 1.2,
+            direction: "none",
+            outModes: "out"
+          },
+          size: { value: 2 },
+          opacity: { value: 0.5 }
+        },
+        interactivity: {
+          events: { onHover: { enable: true, mode: "grab" } },
+          modes: { grab: { distance: 140, links: { opacity: 0.8 } } }
+        }
+      }
+    });
+  }
+
+  function updateVisualThreatState(isDangerous) {
+    if (!particlesContainer) return;
+
+    const options = particlesContainer.options;
+    if (isDangerous) {
+      // Threat Aesthetic: Neon Red, Fast, Aggressive
+      options.particles.color.value = "#ff0000";
+      options.particles.links.color.value = "#ff0000";
+      options.particles.move.speed = 6.5;
+      options.particles.links.width = 2;
+    } else {
+      // Safe Aesthetic: Calm Blue/White, Constellation style
+      options.particles.color.value = "#ffffff";
+      options.particles.links.color.value = "#0088ff";
+      options.particles.move.speed = 1.2;
+      options.particles.links.width = 1;
+    }
+    particlesContainer.refresh();
+  }
+
   function updateStatsUI({ status, totalLinks, unsafeLinks }) {
     elements.totalLinks.textContent = String(totalLinks);
     elements.unsafeLinks.textContent = String(unsafeLinks);
     elements.siteStatus.textContent = status;
+
+    const isDangerous = (status === "THREAT DETECTED" || status === "WARNING");
+    updateVisualThreatState(isDangerous);
 
     if (status === "THREAT DETECTED") {
       elements.siteStatus.className = "stat-val dangerous-site";
@@ -306,6 +367,9 @@ document.addEventListener("DOMContentLoaded", () => {
       elements.siteStatus.className = "stat-val safe-site";
     }
   }
+
+  // Initial Boot
+  initParticles();
 
   function withActiveHostname(callback) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {

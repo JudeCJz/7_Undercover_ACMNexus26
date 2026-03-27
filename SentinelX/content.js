@@ -3,9 +3,42 @@ let unsafeLinks = 0;
 let isCurrentSiteDangerous = false;
 let scannedLinks = [];
 let isScanningEnabled = true;
-let tooltipElement = null;
-let sidebarListenersAttached = false;
-let scanTimeout = null;
+
+// [Expert Security Shield] - Immediate Execution
+// This runs synchronously to catch the page BEFORE anything is parsed.
+const currentUrl = window.location.href;
+const isHttp = currentUrl.startsWith("http://");
+const hostname = window.location.hostname.toLowerCase();
+const isLocal = hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.");
+
+// If it's a known simple threat (HTTP), we can prep the flag immediately
+let fastFlagReason = (isHttp && !isLocal) ? "Insecure Protocol (HTTP)" : null;
+
+// Aggressively hide the document the micro-second it becomes available
+const applyShield = (el) => {
+  if (document.getElementById("sentinel-shield")) return;
+  const shield = document.createElement("style");
+  shield.id = "sentinel-shield";
+  shield.textContent = "html { display: none !important; }";
+  el.appendChild(shield);
+};
+
+if (document.documentElement) {
+  applyShield(document.documentElement);
+} else {
+  const observer = new MutationObserver(() => {
+    if (document.documentElement) {
+      applyShield(document.documentElement);
+      observer.disconnect();
+    }
+  });
+  observer.observe(document, { childList: true });
+}
+
+function restoreVisibility() {
+  const shield = document.getElementById("sentinel-shield");
+  if (shield) shield.remove();
+}
 
 const extractDomain = (urlStr) => {
   try {
@@ -29,7 +62,7 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
   const domain = extractDomain(urlStr);
   if (!domain) return { safe: true };
 
-  // 1. Smart Protocol Security Check
+  // 1. Protocol Security Check
   if (urlStr.startsWith("http://")) {
     const isLocal = domain === "localhost" || 
                     domain === "127.0.0.1" || 
@@ -61,10 +94,8 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
   }
 
   // 4. Subdomain Squatting / Typosquatting
-  // Detects: google.com.secure-login.net / apple-support.verify-device.live
   const isSquatting = sensitiveBrands.some(brand => {
     const parts = domain.split('.');
-    // If brand is in the subdomain but the last two parts are NOT the brand
     const isBrandInDomain = domain.includes(brand);
     const isBrandPrimary = parts.slice(-2).some(p => p.includes(brand));
     return isBrandInDomain && !isBrandPrimary;
@@ -74,7 +105,7 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
     return {
       safe: false,
       reason: "Typosquatting Detected",
-      details: "This domain contains a trusted brand name in its prefix but is hosted on an unrelated server. This is a targeted phishing technique."
+      details: "This domain contains a trusted brand name in its prefix but is hosted on an unrelated server."
     };
   }
 
@@ -98,7 +129,7 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
     return {
       safe: false,
       reason: "Malicious File Type",
-      details: `This link triggers a download for a high-risk file type (.${fileExt}) which could contain malware or viruses.`
+      details: `This link triggers a download for a high-risk file type (.${fileExt}) which could contain malware.`
     };
   }
 
@@ -107,7 +138,7 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
     return {
       safe: false,
       reason: "Shortened URL (Masked)",
-      details: "This link uses a URL shortener to hide its true destination. Proceed with extreme caution as masked links are common in spear-phishing."
+      details: "This link uses a URL shortener to hide its true destination."
     };
   }
 
@@ -117,7 +148,7 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
     return {
       safe: false,
       reason: "Data Leakage Threat",
-      details: "The link contains sensitive session tokens or password fragments in the URL itself, making it a prime target for credential harvesting."
+      details: "The link contains sensitive session tokens or password fragments in the URL itself."
     };
   }
 
@@ -136,7 +167,7 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
     return {
       safe: false,
       reason: "Confirmed Blacklist Match",
-      details: `Intelligence data confirms this domain ("${domain}") is associated with cyber threats.`
+      details: `Intelligence data confirms this domain ("${domain}") is malicious.`
     };
   }
 
@@ -179,140 +210,23 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
   return { safe: true };
 }
 
-function createSidebarElements() {
-  if (document.getElementById("lss-sidebar-container")) return;
-
-  const container = document.createElement("div");
-  container.id = "lss-sidebar-container";
-  container.innerHTML = `
-    <div class="lss-trigger" id="lss-sidebar-trigger">SENTINEL</div>
-    <div class="lss-sidebar" id="lss-sidebar-main">
-      <div class="lss-sidebar-header">
-        <h2>Sentinel Intelligence</h2>
-        <button class="lss-close-btn" id="lss-sidebar-close" type="button" aria-label="Close panel">x</button>
-      </div>
-      <div class="lss-sidebar-content">
-        <div class="lss-sidebar-section-title">Security State</div>
-        <div id="lss-sidebar-status">Initializing...</div>
-
-        <div class="lss-sidebar-section-title">Link Trace Audit</div>
-        <div id="lss-link-audit-list">Scanning in progress...</div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(container);
-
-  const trigger = document.getElementById("lss-sidebar-trigger");
-  const sidebar = document.getElementById("lss-sidebar-main");
-  const closeButton = document.getElementById("lss-sidebar-close");
-
-  if (trigger && sidebar && closeButton) {
-    trigger.addEventListener("click", () => sidebar.classList.toggle("open"));
-    closeButton.addEventListener("click", () => sidebar.classList.remove("open"));
-  }
-}
-
-function updateSidebarUI() {
-  const statusDiv = document.getElementById("lss-sidebar-status");
-  const listDiv = document.getElementById("lss-link-audit-list");
-  if (!statusDiv || !listDiv) return;
-
-  statusDiv.innerHTML = `
-    <div style="font-weight:700; color:${isCurrentSiteDangerous ? "#ef4444" : "#22c55e"}">
-      STATUS: ${isCurrentSiteDangerous ? "THREAT DETECTED" : "SECURED"}
-    </div>
-    <div style="font-size:11px; margin-top:5px; color:#94a3b8">
-      Audited: ${scannedLinks.length} | Flags: ${unsafeLinks}
-    </div>
-  `;
-
-  listDiv.innerHTML = "";
-  if (scannedLinks.length === 0) {
-    listDiv.textContent = "No links detected.";
+function showInterstitial(reason) {
+  if (sessionStorage.getItem(`lss-dismissed-threat-${window.location.hostname}`)) {
+    restoreVisibility();
     return;
   }
 
-  scannedLinks.slice(0, 150).forEach((link) => {
-    const item = document.createElement("div");
-    item.className = `lss-link-item ${link.safe ? "" : "unsafe"}`.trim();
-    item.innerHTML = `
-      <span class="lss-item-url">${link.url}</span>
-      <span class="lss-item-reason">${link.safe ? "Clean match" : link.reason}</span>
-    `;
-    listDiv.appendChild(item);
-  });
-}
-
-function removeTooltip() {
-  if (tooltipElement) {
-    tooltipElement.remove();
-    tooltipElement = null;
+  // Wait for body to be available if needed
+  if (!document.body) {
+    setTimeout(() => showInterstitial(reason), 30);
+    return;
   }
-}
-
-function ensureTooltipListeners() {
-  if (sidebarListenersAttached) return;
-  sidebarListenersAttached = true;
-
-  document.addEventListener("mouseover", (event) => {
-    const link = event.target.closest("a.lss-unsafe-link");
-    if (!link) return;
-
-    removeTooltip();
-    const tooltip = document.createElement("div");
-    tooltip.className = "lss-tooltip";
-    tooltip.innerHTML = `
-      <strong>${link.dataset.lssReason || "Unsafe link"}</strong>
-      <div>${link.dataset.lssDetails || ""}</div>
-      <span class="lss-url">URL: ${link.href}</span>
-    `;
-    document.body.appendChild(tooltip);
-
-    const rect = link.getBoundingClientRect();
-    tooltip.style.left = `${Math.max(12, rect.left + window.scrollX)}px`;
-    tooltip.style.top = `${rect.bottom + window.scrollY + 10}px`;
-    tooltipElement = tooltip;
-  });
-
-  document.addEventListener("mouseout", (event) => {
-    if (event.target.closest("a.lss-unsafe-link")) {
-      removeTooltip();
-    }
-  });
-
-  window.addEventListener("scroll", removeTooltip, true);
-}
-
-function cleanupUI() {
-  document.querySelectorAll(".lss-unsafe-link").forEach((link) => {
-    link.classList.remove("lss-unsafe-link");
-    delete link.dataset.lssReason;
-    delete link.dataset.lssDetails;
-  });
-
-  document.querySelectorAll(".lss-banner, .lss-interstitial").forEach((element) => {
-    element.remove();
-  });
-
-  removeTooltip();
-}
-
-function resetScanState() {
-  totalLinks = 0;
-  unsafeLinks = 0;
-  isCurrentSiteDangerous = false;
-  scannedLinks = [];
-}
-
-function showInterstitial(reason) {
-  if (sessionStorage.getItem(`lss-dismissed-threat-${window.location.hostname}`)) return;
 
   const overlay = document.createElement("div");
   overlay.className = "lss-interstitial";
   overlay.innerHTML = `
     <h1>ACCESS DENIED</h1>
-    <p>Sentinel One has identified this site as dangerous.</p>
+    <p>LinPatrol has identified this site as dangerous.</p>
     <p class="lss-interstitial-reason">Reason: ${reason}</p>
     <div class="btn-group">
       <button class="btn btn-danger" id="lss-go-back" type="button">Return to Safety</button>
@@ -324,33 +238,30 @@ function showInterstitial(reason) {
   document.getElementById("lss-go-back").addEventListener("click", () => window.history.back());
   document.getElementById("lss-proceed").addEventListener("click", () => {
     sessionStorage.setItem(`lss-dismissed-threat-${window.location.hostname}`, "true");
+    restoreVisibility();
     overlay.remove();
   });
 }
 
-function notifyStatus(status) {
-  chrome.runtime.sendMessage({ type: "UPDATE_STATUS", status });
-}
+function runPatrolScan() {
+  // If we already detected a fast-flag threat (like HTTP), jump to alert
+  if (fastFlagReason) {
+    isCurrentSiteDangerous = true;
+    showInterstitial(fastFlagReason);
+    notifyStatus("DANGER");
+    return;
+  }
 
-function runSentinelScan() {
   chrome.storage.local.get(
     ["blacklist", "whitelist", "keywords", "suspiciousTlds", "sensitiveBrands", "dangerousExtensions", "urlShorteners", "isScanningEnabled"],
     (res) => {
       isScanningEnabled = res.isScanningEnabled !== false;
 
       if (!isScanningEnabled) {
-        cleanupUI();
         notifyStatus("OFF");
+        restoreVisibility();
         return;
       }
-
-      document.querySelectorAll(".lss-unsafe-link").forEach((link) => {
-        link.classList.remove("lss-unsafe-link");
-      });
-
-      resetScanState();
-      ensureTooltipListeners();
-      createSidebarElements();
 
       const blacklist = res.blacklist || [];
       const whitelist = res.whitelist || [];
@@ -367,7 +278,7 @@ function runSentinelScan() {
         keywords,
         suspiciousTlds,
         sensitiveBrands,
-        "", // current site has no anchor text
+        "",
         dangerousExtensions,
         urlShorteners
       );
@@ -375,92 +286,52 @@ function runSentinelScan() {
       if (!siteCheck.safe) {
         isCurrentSiteDangerous = true;
         showInterstitial(siteCheck.reason);
+        notifyStatus("DANGER");
+      } else {
+        restoreVisibility();
       }
 
-      const links = document.querySelectorAll("a[href]");
-      totalLinks = links.length;
-
-      links.forEach((link) => {
-        if (link.closest("#lss-sidebar-container")) return;
-
-        // Passing link.innerText to detect BRAND SPOOFING
-        const result = checkUrlSafe(
-          link.href, 
-          blacklist, 
-          whitelist, 
-          keywords, 
-          suspiciousTlds, 
-          sensitiveBrands, 
-          link.innerText,
-          dangerousExtensions,
-          urlShorteners
-        );
-
-        scannedLinks.push({
-          url: link.href,
-          safe: result.safe,
-          reason: result.reason || "Safe"
+      // Proceed to link scanning if idle
+      if (document.readyState === "complete" || document.readyState === "interactive") {
+        scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
+      } else {
+        document.addEventListener("DOMContentLoaded", () => {
+           scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
         });
-
-        if (!result.safe) {
-          unsafeLinks += 1;
-          link.classList.add("lss-unsafe-link");
-          link.dataset.lssReason = result.reason || "Unsafe link";
-          link.dataset.lssDetails = result.details || "This link was flagged by the local scanner.";
-        }
-      });
-
-      updateSidebarUI();
-      notifyStatus(isCurrentSiteDangerous ? "DANGER" : unsafeLinks > 0 ? "WARN" : "SAFE");
+      }
     }
   );
 }
 
-function debouncedScan() {
-  if (scanTimeout) clearTimeout(scanTimeout);
-  scanTimeout = setTimeout(runSentinelScan, 500); 
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", runSentinelScan);
-} else {
-  runSentinelScan();
-}
-
-const observer = new MutationObserver((mutations) => {
-  if (!isScanningEnabled) return;
-  let shouldScan = false;
-  for (const mutation of mutations) {
-    if (mutation.addedNodes.length > 0) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType === 1) { 
-          if (node.tagName === 'A' || node.querySelector('a')) {
-            shouldScan = true;
-            break;
-          }
-        }
-      }
+function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners) {
+  const links = document.querySelectorAll("a[href]");
+  links.forEach((link) => {
+    const result = checkUrlSafe(link.href, blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, link.innerText, dangerousExtensions, urlShorteners);
+    if (!result.safe) {
+      link.classList.add("lss-unsafe-link");
+      link.dataset.lssReason = result.reason;
     }
-    if (shouldScan) break;
-  }
-  if (shouldScan) debouncedScan();
-});
+  });
+}
 
-observer.observe(document.body, { childList: true, subtree: true });
+function notifyStatus(status) {
+  chrome.runtime.sendMessage({ type: "UPDATE_STATUS", status });
+}
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local") {
-    runSentinelScan();
-  }
-});
+// Initial Kickstart
+runPatrolScan();
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === "GET_STATS") {
-    sendResponse({ totalLinks, unsafeLinks, isCurrentSiteDangerous, isScanningEnabled });
-  }
-
-  if (request.type === "FORCE_RESCAN") {
-    runSentinelScan();
-    sendResponse({ ok: true });
+// Monitor for dynamic content
+const observer = new MutationObserver(() => {
+  if (isScanningEnabled && !isCurrentSiteDangerous) {
+    runPatrolScan();
   }
 });
+
+if (document.body) {
+  observer.observe(document.body, { childList: true, subtree: true });
+} else {
+  document.addEventListener("DOMContentLoaded", () => {
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+}

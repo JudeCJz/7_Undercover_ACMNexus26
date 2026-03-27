@@ -23,7 +23,7 @@ A **16-hour hackathon** across various domains where innovation meets execution.
 
 ```md
 ### 🏷️ Project Name:
-Link Safety Scanner
+LinPatrol
 
 ### 🎯 Chosen Domain:
 5️⃣ Cybersecurity & Threat Intelligence
@@ -32,7 +32,17 @@ Link Safety Scanner
 Users frequently encounter malicious links and phishing attempts while browsing, struggling to manually verify the safety of URLs leading to potential data breaches.
 
 ### 💡 Solution:
-A Browser Extension that locally scans websites for unsafe links against a database of blacklisted domains and keywords. It provides visual cues (red highlights), hover tooltips, and dangerous site banners to ensure a safe browsing experience without compromising user privacy.
+LinPatrol is a professional-grade security terminal and browser extension that implements a **"Shield-First" architecture**. It pre-emptively blocks malicious content at `document_start` before any rendering occurred. It features a border-aligned Side Panel with 4K interactive particle intelligence, AI-driven threat analysis, and a 13-layer heuristic engine.
+
+### 🌟 Elite Features:
+*   **Shield-First Technology:** Nanosecond page-blanking to prevent background threat execution.
+*   **13-Layer Heuristic Suite:** Detects IDN Spoofing, DGA botnets, Brand Mismatches, and data exfiltration.
+*   **Border-Aligned Terminal:** A persistent Side Panel Command Center with glassmorphic UI.
+*   **AI Persona:** Integrated LinPatrol AI for proactive advice and scam message analysis.
+*   **Dynamic Visual Intelligence:** Interactive 'Cyber-Constellation' background that triggers a 'Red Alert' pulse when threats are detected.
+
+---
+![LinPatrol Portfolio - Dark Mode Pulse](progress/6.png)
 ```
 
 ---

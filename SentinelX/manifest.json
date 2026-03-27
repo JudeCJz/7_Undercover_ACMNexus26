@@ -1,21 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Sentinel One Security",
-  "version": "1.1",
-  "description": "High-fidelity intelligence suite to detect, quarantine, and audit malicious URL threats in real-time.",
+  "name": "LinPatrol",
+  "version": "1.2",
+  "description": "Professional-grade link auditing and threat intelligence suite.",
   "permissions": [
     "storage",
     "activeTab",
     "tabs",
     "webNavigation",
     "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
+    "declarativeNetRequestFeedback",
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   },
   "content_scripts": [
     {
@@ -28,10 +32,10 @@
       "js": [
         "content.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_title": "Open LinPatrol"
   }
 }

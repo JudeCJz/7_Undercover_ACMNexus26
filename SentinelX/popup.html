@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Link Safety Scanner</title>
+  <title>LinPatrol Security</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --panel-bg: rgba(255, 255, 255, 0.03);
+      --bg: #04060b;
+      --card-bg: rgba(15, 23, 42, 0.6);
+      --panel-bg: rgba(255, 255, 255, 0.04);
       --primary: #38bdf8;
       --danger: #ef4444;
       --success: #22c55e;
@@ -16,21 +16,32 @@
       --text-dim: #94a3b8;
     }
 
+    #particles-js {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: #04060b;
+    }
+
     body {
       width: 360px;
       margin: 0;
-      background: var(--bg);
+      background: transparent;
       color: var(--text);
       font: 13px/1.4 "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     }
 
     .header {
-      padding: 15px;
+      padding: 15px 12px; /* Less horizontal padding */
       background: var(--card-bg);
+      backdrop-filter: blur(8px);
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .logo-container {
@@ -57,16 +68,102 @@
     }
 
     .content {
-      padding: 15px;
+      padding: 15px 10px 15px 15px; /* Shifting layout to the right */
       display: grid;
       gap: 14px;
+      position: relative;
+      z-index: 1;
     }
 
+    .status-panel,
     .panel {
-      background: var(--panel-bg);
+      background: var(--card-bg);
+      backdrop-filter: blur(4px);
       padding: 14px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* AI & Breach Components */
+    .ai-btn {
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+      border: none;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .ai-chat-panel {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+    }
+
+    .ai-chat-panel.open { display: flex; }
+
+    .ai-chat-header {
+      padding: 15px;
+      background: var(--card-bg);
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .ai-chat-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .ai-message {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    .ai-message.bot {
+      background: rgba(255, 255, 255, 0.05);
+      align-self: flex-start;
+      border-bottom-left-radius: 2px;
+    }
+
+    .ai-message.user {
+      background: var(--primary);
+      color: #001018;
+      align-self: flex-end;
+      border-bottom-right-radius: 2px;
+    }
+
+    .ai-chat-footer {
+      padding: 15px;
+      background: var(--card-bg);
+      display: flex;
+      gap: 8px;
+    }
+
+    .ai-input {
+      flex: 1;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 10px;
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
     }
 
     .accordion {
@@ -278,15 +375,15 @@
     input:checked + .slider { background-color: var(--primary); }
     input:checked + .slider:before { transform: translateX(18px); }
 
-    ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 10px; }
   </style>
 </head>
 <body>
+  <div id="particles-js"></div>
   <div class="header">
     <div class="logo-container">
-      <div class="logo-badge">S</div>
-      <h2>Sentinel One</h2>
+      <div class="logo-badge">L</div>
+      <h2>LinPatrol</h2>
     </div>
     <label class="switch" title="Enable or disable scanning">
       <input type="checkbox" id="scan-toggle" checked>
@@ -309,7 +406,7 @@
         <span id="unsafe-links" class="stat-val">0</span>
       </div>
       <button class="ai-btn" id="open-ai-chat">
-        <span style="font-size: 16px;">🤖</span> Ask Sentinel AI
+        <span style="font-size: 16px;">🤖</span> Ask LinPatrol AI
       </button>
     </div>
 
@@ -361,11 +458,11 @@
   <!-- AI Chat Panel (Hidden by Default) -->
   <div class="ai-chat-panel" id="ai-chat-panel">
     <div class="ai-chat-header">
-      <h3 style="margin: 0;">Sentinel AI Advisor</h3>
+      <h3 style="margin: 0;">LinPatrol AI Advisor</h3>
       <button class="btn btn-outline" id="close-ai-chat" style="padding: 4px 10px;">X</button>
     </div>
     <div class="ai-chat-body" id="ai-messages">
-      <div class="ai-message bot">Hello! I am Sentinel AI. How can I help secure your browsing session today?</div>
+      <div class="ai-message bot">Hello! I am LinPatrol AI. How can I help secure your browsing session today?</div>
     </div>
     <div class="ai-chat-footer">
       <input type="text" class="ai-input" id="ai-input" placeholder="Ask about phishing, 2FA, or paste a scam email..."/>
@@ -373,6 +470,7 @@
     </div>
   </div>
 
+  <script src="tsparticles.bundle.min.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
