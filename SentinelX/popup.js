@@ -38,6 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
           if (tabs[0]?.id) {
             chrome.tabs.reload(tabs[0].id);
           }
+          // Automatically close the sidebar when disabled
+          if (!isEnabled) {
+            setTimeout(() => window.close(), 400);
+          }
         });
       });
     });
@@ -79,8 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.key === "Enter") handleAiMessage();
     });
 
-    // Breach Check (Demo)
-    document.getElementById("check-breach").addEventListener("click", handleBreachCheck);
+
 
     // --- Dynamic Tab Sync (Real-time tracking) ---
     // This ensures the side panel updates instantly when you switch tabs
@@ -92,30 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  async function handleBreachCheck() {
-    const email = document.getElementById("breach-email").value.trim();
-    const feedback = document.getElementById("breach-feedback");
-    
-    if (!email || !email.includes("@")) {
-      feedback.textContent = "Please enter a valid email address.";
-      feedback.className = "feedback error";
-      return;
-    }
 
-    feedback.textContent = "Scanning global databases...";
-    feedback.className = "feedback";
-
-    // Simulate real HIBP check for demo fidelity
-    setTimeout(() => {
-      const isBreached = email.length % 2 === 0; // Deterministic demo logic
-      if (isBreached) {
-        feedback.innerHTML = `⚠️ <span style="color:var(--danger)">Breach Found!</span> 2 data leaks detected.`;
-        addAiMessage("bot", `I've detected your email (${email}) in a simulated data breach. **Recommendation:** Change your passwords and enable 2FA immediately. See 'Breach Advice' in the chat for details.`);
-      } else {
-        feedback.innerHTML = `✅ <span style="color:var(--success)">System Clear.</span> No known leaks.`;
-      }
-    }, 1500);
-  }
 
   function handleAiMessage() {
     const input = document.getElementById("ai-input");
@@ -460,8 +440,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // this listener ensures the side-panel switch flips automatically.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.isScanningEnabled) {
-      elements.scanToggle.checked = changes.isScanningEnabled.newValue !== false;
+      const isEnabled = changes.isScanningEnabled.newValue !== false;
+      elements.scanToggle.checked = isEnabled;
       syncWithActiveTab();
+      
+      // Auto-close if disabled via hotkey
+      if (!isEnabled) {
+        setTimeout(() => window.close(), 400);
+      }
     }
   });
 });
