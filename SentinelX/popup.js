@@ -7,7 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
     feedback: document.getElementById("popup-feedback"),
     siteStatus: document.getElementById("site-status"),
     totalLinks: document.getElementById("total-links"),
-    unsafeLinks: document.getElementById("unsafe-links")
+    unsafeLinks: document.getElementById("unsafe-links"),
+    auditContainer: document.getElementById("audit-view")
   };
 
   initializePopup();
@@ -33,7 +34,11 @@ document.addEventListener("DOMContentLoaded", () => {
           isEnabled ? "Scanning enabled for the active tab." : "Scanning disabled for the active tab.",
           isEnabled ? "success" : ""
         );
-        syncWithActiveTab({ forceRescan: true });
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+          if (tabs[0]?.id) {
+            chrome.tabs.reload(tabs[0].id);
+          }
+        });
       });
     });
 
@@ -302,6 +307,33 @@ document.addEventListener("DOMContentLoaded", () => {
         totalLinks: response.totalLinks || 0,
         unsafeLinks: response.unsafeLinks || 0
       });
+
+      renderAuditList(response.scannedLinks || [], tabId);
+    });
+  }
+
+  function renderAuditList(links, tabId) {
+    elements.auditContainer.innerHTML = "";
+    
+    if (!links || links.length === 0) {
+      elements.auditContainer.innerHTML = "<div class='list-item' style='color:#64748b'>No links detected on this page.</div>";
+      return;
+    }
+
+    // Sort: Unsafe first, then Safe
+    const sortedLinks = [...links].sort((a, b) => (a.safe === b.safe) ? 0 : a.safe ? 1 : -1);
+
+    sortedLinks.forEach(link => {
+      const item = document.createElement("div");
+      item.className = `audit-item ${link.safe ? 'safe' : 'unsafe'}`;
+      item.innerHTML = `
+        <div class="audit-url">${link.url}</div>
+        <div class="audit-reason">${link.reason}</div>
+      `;
+      item.addEventListener("click", () => {
+        chrome.tabs.sendMessage(tabId, { type: "SCROLL_TO_LINK", linkId: link.id });
+      });
+      elements.auditContainer.appendChild(item);
     });
   }
 
@@ -413,4 +445,13 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.feedback.textContent = message;
     elements.feedback.className = `feedback ${type}`.trim();
   }
+  // --- UI Synchronizer (Hardware Shortcut Support) ---
+  // If you use the keyboard shortcut (Alt+Shift+S) to toggle the shield,
+  // this listener ensures the side-panel switch flips automatically.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.isScanningEnabled) {
+      elements.scanToggle.checked = changes.isScanningEnabled.newValue !== false;
+      syncWithActiveTab();
+    }
+  });
 });

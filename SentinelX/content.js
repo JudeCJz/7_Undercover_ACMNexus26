@@ -16,9 +16,9 @@ let fastFlagReason = (isHttp && !isLocal) ? "Insecure Protocol (HTTP)" : null;
 
 // Aggressively hide the document the micro-second it becomes available
 const applyShield = (el) => {
-  if (document.getElementById("sentinel-shield")) return;
+  if (document.getElementById("LinPatrol-shield")) return;
   const shield = document.createElement("style");
-  shield.id = "sentinel-shield";
+  shield.id = "LinPatrol-shield";
   shield.textContent = "html { display: none !important; }";
   el.appendChild(shield);
 };
@@ -36,7 +36,7 @@ if (document.documentElement) {
 }
 
 function restoreVisibility() {
-  const shield = document.getElementById("sentinel-shield");
+  const shield = document.getElementById("LinPatrol-shield");
   if (shield) shield.remove();
 }
 
@@ -247,17 +247,10 @@ function showInterstitial(reason) {
 }
 
 function runPatrolScan() {
-  // If we already detected a fast-flag threat (like HTTP), jump to alert
-  if (fastFlagReason) {
-    isCurrentSiteDangerous = true;
-    showInterstitial(fastFlagReason);
-    notifyStatus("DANGER");
-    return;
-  }
-
   if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
-    console.warn("Sentinel: Chrome storage API not available. Page scanning deferred.");
-    restoreVisibility();
+    if (typeof chrome !== "undefined" && !chrome.runtime?.id) {
+       restoreVisibility();
+    }
     return;
   }
 
@@ -270,9 +263,20 @@ function runPatrolScan() {
       }
       isScanningEnabled = res.isScanningEnabled !== false;
 
+      // [CRITICAL] If disabled, revert EVERYTHING instantly
       if (!isScanningEnabled) {
         notifyStatus("OFF");
         restoreVisibility();
+        const existingOverlay = document.querySelector(".lss-interstitial");
+        if (existingOverlay) existingOverlay.remove();
+        return;
+      }
+
+      // If we already detected a fast-flag threat (like HTTP), jump to alert
+      if (fastFlagReason) {
+        isCurrentSiteDangerous = true;
+        showInterstitial(fastFlagReason);
+        notifyStatus("DANGER");
         return;
       }
 
@@ -307,8 +311,9 @@ function runPatrolScan() {
 
       // Proceed to link scanning if idle
       const performFullScan = () => {
-        const unsafeCount = scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
-        if (unsafeCount > 0) {
+        const auditedLinks = scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
+        const flagCount = auditedLinks.filter(l => !l.safe).length;
+        if (flagCount > 0) {
           notifyStatus("WARN");
         } else {
           notifyStatus("SAFE");
@@ -326,16 +331,24 @@ function runPatrolScan() {
 
 function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners) {
   const links = document.querySelectorAll("a[href]");
-  let flagCount = 0;
-  links.forEach((link) => {
+  const auditedLinks = [];
+  links.forEach((link, idx) => {
+    // Tag the link in the DOM for potential scrolling
+    link.dataset.lssId = `lss-link-${idx}`;
+
     const result = checkUrlSafe(link.href, blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, link.innerText, dangerousExtensions, urlShorteners);
     if (!result.safe) {
       link.classList.add("lss-unsafe-link");
       link.dataset.lssReason = result.reason;
-      flagCount++;
     }
+    auditedLinks.push({
+      id: link.dataset.lssId,
+      url: link.href,
+      safe: result.safe,
+      reason: result.reason || "Verified Safe"
+    });
   });
-  return flagCount;
+  return auditedLinks;
 }
 
 function notifyStatus(status) {
@@ -347,12 +360,38 @@ function notifyStatus(status) {
 // 4. Communication Hub
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "GET_STATS") {
-    sendResponse({
-      totalLinks: document.querySelectorAll("a[href]").length,
-      unsafeLinks: document.querySelectorAll(".lss-unsafe-link").length,
-      isCurrentSiteDangerous: isCurrentSiteDangerous,
-      isScanningEnabled: isScanningEnabled
-    });
+    // Perform a fresh scan to get the latest link states
+    chrome.storage.local.get(
+      ["blacklist", "whitelist", "keywords", "suspiciousTlds", "sensitiveBrands", "dangerousExtensions", "urlShorteners"],
+      (res) => {
+        const links = scanAllLinks(
+          res.blacklist || [], 
+          res.whitelist || [], 
+          res.keywords || [], 
+          res.suspiciousTlds || [], 
+          res.sensitiveBrands || [], 
+          res.dangerousExtensions || [], 
+          res.urlShorteners || []
+        );
+        sendResponse({
+          totalLinks: links.length,
+          unsafeLinks: links.filter(l => !l.safe).length,
+          scannedLinks: links,
+          isCurrentSiteDangerous: isCurrentSiteDangerous,
+          isScanningEnabled: isScanningEnabled
+        });
+      }
+    );
+    return true; // Keep channel open for async response
+  }
+
+  if (request.type === "SCROLL_TO_LINK") {
+    const link = document.querySelector(`a[data-lss-id="${request.linkId}"]`);
+    if (link) {
+      link.scrollIntoView({ behavior: "smooth", block: "center" });
+      link.style.outline = "4px solid var(--danger)";
+      setTimeout(() => link.style.outline = "", 1500);
+    }
   }
 });
 

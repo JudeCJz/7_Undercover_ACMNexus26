@@ -37,5 +37,15 @@
   ],
   "action": {
     "default_title": "Open LinPatrol"
+  },
+  "commands": {
+    "toggle-scanning": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "windows": "Alt+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Toggle LinPatrol Shield Protection"
+    }
   }
 }

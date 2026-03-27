@@ -17,7 +17,7 @@ chrome.runtime.onInstalled.addListener(() => {
       }, () => {
         syncDatabaseToNetworkShield();
       });
-      console.log("Sentinel One Intelligence Database synchronized.");
+      console.log("LinPatrol One Intelligence Database synchronized.");
     } else {
       syncDatabaseToNetworkShield();
     }
@@ -29,7 +29,12 @@ chrome.runtime.onInstalled.addListener(() => {
 async function syncDatabaseToNetworkShield() {
   chrome.storage.local.get(["blacklist", "isScanningEnabled"], (res) => {
     if (res.isScanningEnabled === false) {
-      chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] }); 
+      chrome.declarativeNetRequest.getDynamicRules(rules => {
+        const ruleIds = rules.map(r => r.id);
+        if (ruleIds.length > 0) {
+          chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: ruleIds });
+        }
+      });
       return;
     }
 
@@ -103,4 +108,25 @@ chrome.sidePanel
 
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ tabId: tab.id });
+});
+// 5. Global Command Support: Fast Toggling
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle-scanning") {
+    chrome.storage.local.get(["isScanningEnabled"], (res) => {
+      const nextState = res.isScanningEnabled === false;
+      chrome.storage.local.set({ isScanningEnabled: nextState }, () => {
+        // Update Network-Level Rules
+        syncDatabaseToNetworkShield();
+        
+        // Refresh the active tab to apply the state change immediately
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+          if (tabs[0]?.id) {
+             chrome.tabs.reload(tabs[0].id);
+          }
+        });
+        
+        console.log(`LinPatrol Shield: ${nextState ? "ACTIVE" : "DISABLED"}`);
+      });
+    });
+  }
 });
