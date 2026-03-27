@@ -59,6 +59,9 @@ function checkUrlSafe(urlStr, blacklist, whitelist, keywords, suspiciousTlds, se
     return { safe: true };
   }
 
+  const isContextValid = () => !!(chrome && chrome.runtime && chrome.runtime.id);
+  if (!isContextValid()) return { safe: true };
+
   const domain = extractDomain(urlStr);
   if (!domain) return { safe: true };
 
@@ -252,9 +255,19 @@ function runPatrolScan() {
     return;
   }
 
+  if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
+    console.warn("Sentinel: Chrome storage API not available. Page scanning deferred.");
+    restoreVisibility();
+    return;
+  }
+
   chrome.storage.local.get(
     ["blacklist", "whitelist", "keywords", "suspiciousTlds", "sensitiveBrands", "dangerousExtensions", "urlShorteners", "isScanningEnabled"],
     (res) => {
+      if (chrome.runtime.lastError) {
+        restoreVisibility();
+        return;
+      }
       isScanningEnabled = res.isScanningEnabled !== false;
 
       if (!isScanningEnabled) {
@@ -287,17 +300,25 @@ function runPatrolScan() {
         isCurrentSiteDangerous = true;
         showInterstitial(siteCheck.reason);
         notifyStatus("DANGER");
+        return;
       } else {
         restoreVisibility();
       }
 
       // Proceed to link scanning if idle
+      const performFullScan = () => {
+        const unsafeCount = scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
+        if (unsafeCount > 0) {
+          notifyStatus("WARN");
+        } else {
+          notifyStatus("SAFE");
+        }
+      };
+
       if (document.readyState === "complete" || document.readyState === "interactive") {
-        scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
+        performFullScan();
       } else {
-        document.addEventListener("DOMContentLoaded", () => {
-           scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
-        });
+        document.addEventListener("DOMContentLoaded", performFullScan);
       }
     }
   );
@@ -305,33 +326,50 @@ function runPatrolScan() {
 
 function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners) {
   const links = document.querySelectorAll("a[href]");
+  let flagCount = 0;
   links.forEach((link) => {
     const result = checkUrlSafe(link.href, blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, link.innerText, dangerousExtensions, urlShorteners);
     if (!result.safe) {
       link.classList.add("lss-unsafe-link");
       link.dataset.lssReason = result.reason;
+      flagCount++;
     }
   });
+  return flagCount;
 }
 
 function notifyStatus(status) {
-  chrome.runtime.sendMessage({ type: "UPDATE_STATUS", status });
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
+    chrome.runtime.sendMessage({ type: "UPDATE_STATUS", status }).catch(() => {});
+  }
 }
+
+// 4. Communication Hub
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === "GET_STATS") {
+    sendResponse({
+      totalLinks: document.querySelectorAll("a[href]").length,
+      unsafeLinks: document.querySelectorAll(".lss-unsafe-link").length,
+      isCurrentSiteDangerous: isCurrentSiteDangerous,
+      isScanningEnabled: isScanningEnabled
+    });
+  }
+});
 
 // Initial Kickstart
 runPatrolScan();
 
 // Monitor for dynamic content
-const observer = new MutationObserver(() => {
+const mutationObserver = new MutationObserver(() => {
   if (isScanningEnabled && !isCurrentSiteDangerous) {
     runPatrolScan();
   }
 });
 
 if (document.body) {
-  observer.observe(document.body, { childList: true, subtree: true });
+  mutationObserver.observe(document.body, { childList: true, subtree: true });
 } else {
   document.addEventListener("DOMContentLoaded", () => {
-    observer.observe(document.body, { childList: true, subtree: true });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
   });
 }

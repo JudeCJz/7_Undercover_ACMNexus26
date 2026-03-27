@@ -76,6 +76,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Breach Check (Demo)
     document.getElementById("check-breach").addEventListener("click", handleBreachCheck);
+
+    // --- Dynamic Tab Sync (Real-time tracking) ---
+    // This ensures the side panel updates instantly when you switch tabs
+    chrome.tabs.onActivated.addListener(() => syncWithActiveTab());
+    
+    // This ensures it updates when a page finishes loading or changes URL
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+      if (changeInfo.status === "complete") syncWithActiveTab();
+    });
   }
 
   async function handleBreachCheck() {
@@ -279,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Vital for AI context: sync real-time scan data to storage
       chrome.storage.local.set({ lastScannedLinks: response.scannedLinks || [] });
 
-      let status = "SECURED";
+      let status = "SECURED ✓";
       if (response.isScanningEnabled === false) {
         status = "DISABLED";
       } else if (response.isCurrentSiteDangerous) {
