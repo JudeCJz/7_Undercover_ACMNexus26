@@ -4,11 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // 1. Initial Data Fetch
   chrome.storage.local.get(["blacklist", "whitelist", "keywords", "isScanningEnabled"], (res) => {
-    // Set toggle state (default to true)
     scanToggle.checked = res.isScanningEnabled !== false;
     renderBlacklist(res.blacklist || []);
     
-    // Set current domain in input by default
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       let currentTab = tabs[0];
       if (currentTab && currentTab.url) {
@@ -46,7 +44,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // 3. UI Event Listeners
   scanToggle.addEventListener("change", (e) => {
     chrome.storage.local.set({ isScanningEnabled: e.target.checked }, () => {
-        alert("Scanning " + (e.target.checked ? "enabled" : "disabled") + ". Refresh pages to apply.");
+        // Stats in popup need a moment to re-sync after content script finishes its scan result update
+        setTimeout(() => {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if(tabs[0]) fetchTabStats(tabs[0].id);
+          });
+        }, 300);
     });
   });
 
@@ -86,7 +89,6 @@ document.addEventListener("DOMContentLoaded", () => {
       blacklistContainer.appendChild(div);
     });
 
-    // Delegated click for removal
     const removers = document.querySelectorAll(".remove-item");
     removers.forEach(btn => {
       btn.onclick = (e) => {
@@ -104,7 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
         setObj[listName] = list;
         chrome.storage.local.set(setObj, () => {
           if (listName === "blacklist") renderBlacklist(list);
-          alert(`Enforced: ${item}`);
         });
       }
     });
