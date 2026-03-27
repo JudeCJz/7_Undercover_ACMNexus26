@@ -464,16 +464,17 @@
 
     <div class="panel">
       <div class="section-title">Domain Controls</div>
-      <div class="input-group">
-        <input type="text" id="custom-url" placeholder="example.com" />
-        <button id="add-blacklist" class="btn btn-danger" title="Add to blocked domains">Block</button>
+      <div class="input-group" style="margin-bottom: 10px;">
+        <input type="text" id="custom-url" placeholder="example.com" style="flex: 1;" />
       </div>
-      <div class="button-grid" style="margin-top: 8px;">
-        <button id="add-current-blacklist" class="btn btn-outline">Block Current</button>
-        <button id="add-whitelist" class="btn btn-success">Trust Domain</button>
-      </div>
+      <!-- Adaptive Smart Button -->
+      <button id="smart-toggle-btn" class="btn" style="width: 100%; font-weight: bold; height: 38px;">
+        SYNCING...
+      </button>
       <div id="popup-feedback" class="feedback"></div>
-      <div class="helper-text">Blocking removes a domain from trust. Trusting removes it from blocklist.</div>
+      <div class="helper-text" style="font-size: 10px; margin-top: 8px; opacity: 0.7;">
+        One-click toggle to Block or Trust this domain.
+      </div>
     </div>
 
     <div class="accordion open" id="audit-accordion">

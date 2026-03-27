@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     totalLinks: document.getElementById("total-links"),
     unsafeLinks: document.getElementById("unsafe-links"),
     threatScore: document.getElementById("threat-score"),
+    smartToggleBtn: document.getElementById("smart-toggle-btn"),
     auditContainer: document.getElementById("audit-view")
   };
 
@@ -19,6 +20,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initializePopup();
   bindEvents();
+
+  function refreshSmartButton() {
+    const hostname = normalizeHostname(elements.customUrl.value);
+    if (!hostname) {
+      elements.smartToggleBtn.textContent = "ENTER DOMAIN";
+      elements.smartToggleBtn.className = "btn btn-outline";
+      return;
+    }
+
+    chrome.storage.local.get(["blacklist", "whitelist"], (res) => {
+      const isBlacklisted = (res.blacklist || []).includes(hostname);
+      const isWhitelisted = (res.whitelist || []).includes(hostname);
+
+      if (isBlacklisted) {
+        elements.smartToggleBtn.textContent = "TRUST THIS SITE";
+        elements.smartToggleBtn.className = "btn btn-success";
+      } else if (isWhitelisted) {
+        elements.smartToggleBtn.textContent = "BLOCK THIS SITE";
+        elements.smartToggleBtn.className = "btn btn-danger";
+      } else {
+        elements.smartToggleBtn.textContent = "BLOCK THIS SITE";
+        elements.smartToggleBtn.className = "btn btn-danger";
+      }
+    });
+  }
+
+  function handleSmartToggle() {
+    const hostname = normalizeHostname(elements.customUrl.value);
+    if (!hostname) return;
+
+    chrome.storage.local.get(["blacklist", "whitelist"], (res) => {
+      const isBlacklisted = (res.blacklist || []).includes(hostname);
+      const targetList = isBlacklisted ? "whitelist" : "blacklist";
+      updateStorageLists(targetList, hostname);
+    });
+  }
 
   function initializePopup() {
     chrome.storage.local.get(
@@ -52,16 +89,12 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    document.getElementById("add-blacklist").addEventListener("click", () => {
-      updateDomainList("blacklist");
+    elements.smartToggleBtn.addEventListener("click", () => {
+      handleSmartToggle();
     });
 
-    document.getElementById("add-whitelist").addEventListener("click", () => {
-      updateDomainList("whitelist");
-    });
-
-    document.getElementById("add-current-blacklist").addEventListener("click", () => {
-      withActiveHostname((hostname) => updateStorageLists("blacklist", hostname));
+    elements.customUrl.addEventListener("input", () => {
+      refreshSmartButton();
     });
 
     // Accordion Toggle Logic
@@ -75,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.customUrl.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        updateDomainList("blacklist");
+        handleSmartToggle();
       }
     });
 
@@ -200,13 +233,35 @@ document.addEventListener("DOMContentLoaded", () => {
           [oppositeList]: nextOppositeList
         },
         () => {
+          // [FIX] Auto-Redirect & Reload Logic
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const currentTab = tabs[0];
+            if (!currentTab) return;
+
+            // If we are currently on the "Blocked" page and just trusted the site, release it!
+            if (currentTab.url.includes("blocked.html") && targetList === "whitelist") {
+              try {
+                const params = new URLSearchParams(new URL(currentTab.url).search);
+                const originalUrl = params.get("url");
+                if (originalUrl) {
+                  const dest = originalUrl.includes("://") ? originalUrl : `https://${originalUrl}`;
+                  chrome.tabs.update(currentTab.id, { url: dest });
+                } else {
+                  chrome.tabs.reload(currentTab.id);
+                }
+              } catch (e) {
+                chrome.tabs.reload(currentTab.id);
+              }
+            } else {
+              chrome.tabs.reload(currentTab.id);
+            }
+          });
+
           renderList(targetList, nextTargetList);
           renderList(oppositeList, nextOppositeList);
           elements.customUrl.value = hostname;
           setFeedback(
-            targetList === "blacklist"
-              ? `Blocked ${hostname}.`
-              : `Trusted ${hostname}.`,
+            targetList === "blacklist" ? `Blocked ${hostname}.` : `Trusted ${hostname}.`,
             "success"
           );
           syncWithActiveTab({ forceRescan: true });
@@ -265,9 +320,20 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (currentTab.url) {
-        const hostname = normalizeHostname(currentTab.url);
+        let hostname = normalizeHostname(currentTab.url);
+        
+        // [FIX] Quarantine Awareness: Detect if we are currently on the LinPatrol Block Screen
+        if (currentTab.url.startsWith("chrome-extension://") && currentTab.url.includes("blocked.html")) {
+          try {
+            const params = new URLSearchParams(new URL(currentTab.url).search);
+            const blockedUrl = params.get("url");
+            if (blockedUrl) hostname = normalizeHostname(blockedUrl);
+          } catch (e) {}
+        }
+
         if (hostname) {
           elements.customUrl.value = hostname;
+          refreshSmartButton();
         }
       }
 
