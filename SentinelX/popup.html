@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <title>LinPatrol Security</title>
   <style>
-    :root {
+    * {
+    box-sizing: border-box;
+  }
+
+  :root {
       --bg: #04060b;
       --card-bg: rgba(15, 23, 42, 0.6);
       --panel-bg: rgba(255, 255, 255, 0.04);
@@ -153,6 +157,24 @@
       color: #001018;
       align-self: flex-end;
       border-bottom-right-radius: 2px;
+    }
+
+    .list-search {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: var(--text);
+      font-size: 11px;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    .list-search:focus {
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .ai-chat-footer {
@@ -472,6 +494,7 @@
         <span class="accordion-icon">▼</span>
       </div>
       <div class="accordion-content">
+        <input type="text" id="search-blocked" class="list-search" placeholder="Search blocked sites...">
         <div class="list-container" id="blacklist-view" style="margin-top: 0;"></div>
       </div>
     </div>
@@ -482,6 +505,7 @@
         <span class="accordion-icon">▼</span>
       </div>
       <div class="accordion-content">
+        <input type="text" id="search-trusted" class="list-search" placeholder="Search trusted sites...">
         <div class="list-container" id="whitelist-view" style="margin-top: 0;"></div>
       </div>
     </div>

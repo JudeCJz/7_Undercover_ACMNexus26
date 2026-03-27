@@ -12,6 +12,11 @@ document.addEventListener("DOMContentLoaded", () => {
     auditContainer: document.getElementById("audit-view")
   };
 
+  const listQueries = {
+    blacklist: "",
+    whitelist: ""
+  };
+
   initializePopup();
   bindEvents();
 
@@ -93,7 +98,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // This ensures it updates when a page finishes loading or changes URL
     chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       if (changeInfo.status === "complete") syncWithActiveTab();
+      document.getElementById("search-blocked").addEventListener("input", (e) => {
+      listQueries.blacklist = e.target.value.toLowerCase();
+      chrome.storage.local.get(["blacklist"], (res) => renderList("blacklist", res.blacklist || []));
     });
+
+    document.getElementById("search-trusted").addEventListener("input", (e) => {
+      listQueries.whitelist = e.target.value.toLowerCase();
+      chrome.storage.local.get(["whitelist"], (res) => renderList("whitelist", res.whitelist || []));
+    });
+  });
   }
 
 
@@ -214,14 +228,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderList(listName, list) {
     const container = listName === "blacklist" ? elements.blacklistContainer : elements.whitelistContainer;
+    const query = listQueries[listName];
+    
     container.innerHTML = "";
 
-    if (list.length === 0) {
-      container.innerHTML = "<div class='list-item' style='color:#64748b'>No domains stored.</div>";
+    const filtered = list.filter(item => item.toLowerCase().includes(query));
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class='list-item' style='color:#64748b'>${query ? 'No matching domains.' : 'No domains stored.'}</div>`;
       return;
     }
 
-    list
+    filtered
       .slice()
       .sort((a, b) => a.localeCompare(b))
       .forEach((item) => {

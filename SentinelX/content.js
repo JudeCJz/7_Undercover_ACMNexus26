@@ -313,9 +313,11 @@ function runPatrolScan() {
       );
 
       if (!siteCheck.safe) {
+        // [FIX] No longer hard-blocking with an interstitial overlay for heuristics.
+        // We only mark it as dangerous to trigger badge alerts and notifications.
         isCurrentSiteDangerous = true;
-        showInterstitial(siteCheck.reason);
         notifyStatus("DANGER");
+        restoreVisibility(); // Unblank the page immediately for a smooth experience
         return;
       } else {
         restoreVisibility();
@@ -326,9 +328,9 @@ function runPatrolScan() {
         const auditedLinks = scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners);
         const flagCount = auditedLinks.filter(l => !l.safe).length;
         if (flagCount > 0) {
-          notifyStatus("WARN");
+          notifyStatus("WARN", auditedLinks);
         } else {
-          notifyStatus("SAFE");
+          notifyStatus("SAFE", auditedLinks);
         }
       };
 
@@ -342,14 +344,17 @@ function runPatrolScan() {
 }
 
 function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, dangerousExtensions, urlShorteners) {
-  const links = document.querySelectorAll("a[href]");
+  const links = getAllLinksRecursively(document);
   const auditedLinks = [];
+  
   links.forEach((link, idx) => {
     // Tag the link in the DOM for potential scrolling
     link.dataset.lssId = `lss-link-${idx}`;
 
     const result = checkUrlSafe(link.href, blacklist, whitelist, keywords, suspiciousTlds, sensitiveBrands, link.innerText, dangerousExtensions, urlShorteners);
-    if (!result.safe) {
+    
+    // [FIX 2] ONLY apply red boxes if protection is ENABLED
+    if (!result.safe && isScanningEnabled) {
       link.classList.add("lss-unsafe-link");
       link.dataset.lssReason = result.reason;
       
@@ -357,6 +362,7 @@ function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveB
       link.onmouseenter = (e) => showTooltip(link, result.reason, e);
       link.onmouseleave = () => hideTooltip();
     } else {
+      // Clean up if it was previously flagged but now safe or disabled
       link.classList.remove("lss-unsafe-link");
       link.onmouseenter = null;
       link.onmouseleave = null;
@@ -369,6 +375,34 @@ function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveB
     });
   });
   return auditedLinks;
+}
+
+/**
+ * Deep-Search Link Discovery
+ * Pierces through Shadow DOM to find links in modern SPAs (Spotify, etc.)
+ */
+function getAllLinksRecursively(root) {
+  let allLinks = [];
+  const findLinks = (node) => {
+    if (node.tagName === "A" && node.href) {
+      allLinks.push(node);
+    }
+    
+    // Pierce Shadow DOM
+    if (node.shadowRoot) {
+      findLinks(node.shadowRoot);
+    }
+    
+    // Traverse children
+    let child = node.firstChild;
+    while (child) {
+      findLinks(child);
+      child = child.nextSibling;
+    }
+  };
+  
+  findLinks(root);
+  return allLinks;
 }
 
 let activeTooltip = null;
@@ -393,9 +427,26 @@ function hideTooltip() {
   }
 }
 
-function notifyStatus(status) {
+function notifyStatus(status, links = []) {
   if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
-    chrome.runtime.sendMessage({ type: "UPDATE_STATUS", status }).catch(() => {});
+    let scoreText = "";
+    const unsafeCount = links.filter(l => !l.safe).length;
+    
+    if (status === "OFF") {
+      scoreText = "";
+    } else if (isCurrentSiteDangerous) {
+      scoreText = "10"; // Max danger if site is intercepted
+    } else if (links.length > 0) {
+      const score = (unsafeCount / links.length) * 10;
+      scoreText = score.toFixed(1);
+      if (scoreText === "0.0") scoreText = "0";
+    }
+
+    chrome.runtime.sendMessage({ 
+      type: "UPDATE_STATUS", 
+      status, 
+      score: scoreText 
+    }).catch(() => {});
   }
 }
 
@@ -454,3 +505,30 @@ if (document.body) {
     mutationObserver.observe(document.body, { childList: true, subtree: true });
   });
 }
+
+// [FIX 1] Instant Cleanup Listener
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.isScanningEnabled) {
+    isScanningEnabled = changes.isScanningEnabled.newValue !== false;
+    
+    if (!isScanningEnabled) {
+      // 1. Remove all red highlights
+      document.querySelectorAll(".lss-unsafe-link").forEach(link => {
+        link.classList.remove("lss-unsafe-link");
+        delete link.dataset.lssReason;
+        link.onmouseenter = null;
+        link.onmouseleave = null;
+      });
+      
+      // 2. Clear any active tooltips
+      hideTooltip();
+      
+      // 3. Remove interstitial overlay if it exists
+      const existingOverlay = document.querySelector(".lss-interstitial");
+      if (existingOverlay) existingOverlay.remove();
+      
+      // 4. Reset visibility (un-blank the page)
+      restoreVisibility();
+    }
+  }
+});

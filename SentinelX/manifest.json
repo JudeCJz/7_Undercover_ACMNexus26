@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinPatrol",
-  "version": "1.7",
+  "version": "2.1",
   "description": "Professional-grade link auditing and threat intelligence suite.",
   "icons": {
     "128": "icons/logo.png"
@@ -13,7 +13,8 @@
     "webNavigation",
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
-    "sidePanel"
+    "sidePanel",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"

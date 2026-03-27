@@ -74,27 +74,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "UPDATE_STATUS") {
     const tabId = sender.tab ? sender.tab.id : request.tabId;
     if (tabId) {
-      let text = "";
-      let color = "";
-      switch (request.status) {
-        case "SAFE":
-          text = "✓";
-          color = "#22c55e"; 
-          break;
-        case "WARN":
-          text = "!";
-          color = "#f59e0b"; 
-          break;
-        case "DANGER":
-          text = "X";
-          color = "#ef4444"; 
-          break;
-        case "OFF":
-          text = "";
-          color = "#64748b"; 
-          break;
+      let badgeText = "✓"; // Default to tick
+      let color = "#64748b"; // Default grey
+      
+      const scoreNum = parseFloat(request.score || "0");
+      
+      if (request.status === "OFF" || !request.score) {
+        badgeText = "";
+        color = "#64748b";
+      } else if (scoreNum > 6.0 || request.status === "DANGER") {
+        badgeText = "X"; // New High-Risk Icon
+        color = "#ef4444"; // Red Scale
+      } else if (scoreNum >= 1.0) {
+        badgeText = "✓";
+        color = "#f59e0b"; // Yellow Scale
+      } else {
+        badgeText = "✓";
+        color = "#22c55e"; // Green Scale (Safe)
       }
-      chrome.action.setBadgeText({ text: text, tabId: tabId });
+
+      chrome.action.setBadgeText({ text: badgeText, tabId: tabId });
       chrome.action.setBadgeBackgroundColor({ color: color, tabId: tabId });
     }
   }
