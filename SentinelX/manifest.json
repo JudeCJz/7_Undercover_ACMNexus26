@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "SentinelX - Adaptive Security Guard",
+  "version": "2.0.0",
+  "description": "Unified AI-driven risk scoring engine for real-time link safety, device fingerprinting, and account protection.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "notifications",
+    "tabs",
+    "contextMenus"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "host_permissions": [
+    "https://safebrowsing.googleapis.com/*",
+    "https://emailrep.io/*",
+    "https://www.virustotal.com/*"
+  ]
+}

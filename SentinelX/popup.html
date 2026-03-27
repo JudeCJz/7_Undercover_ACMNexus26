@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>SentinelX Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --primary: #38bdf8;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --text: #f8fafc;
+      --text-dim: #94a3b8;
+    }
+
+    body {
+      width: 400px;
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .header {
+      padding: 20px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
+
+    .content { padding: 20px; }
+
+    /* Risk Score Gauge */
+    .gauge-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 25px;
+      position: relative;
+    }
+
+    .gauge-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: conic-gradient(var(--primary) 0%, #1e293b 0%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: background 0.5s ease;
+    }
+
+    .gauge-circle::after {
+      content: "";
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      background: var(--bg);
+      border-radius: 50%;
+    }
+
+    .gauge-value {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+    }
+
+    .gauge-value h1 { margin: 0; font-size: 32px; font-weight: 900; }
+    .gauge-value span { font-size: 11px; text-transform: uppercase; color: var(--text-dim); }
+
+    /* Signals Grid */
+    .signals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+
+    .signal-card {
+      background: var(--card);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+      text-align: center;
+    }
+
+    .signal-icon { font-size: 18px; margin-bottom: 5px; }
+    .signal-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+    .signal-value { font-size: 12px; font-weight: bold; margin-top: 4px; }
+
+    /* Activity Feed */
+    .section-title { font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin: 0 0 10px 0; font-weight: bold; letter-spacing: 1px; }
+
+    .threat-item {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .threat-item:last-child { border-bottom: none; }
+
+    .threat-info { flex: 1; }
+    .threat-title { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+    .threat-meta { font-size: 10px; color: var(--text-dim); }
+    .threat-badge { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800; background: var(--danger); }
+
+    .btn-action {
+      background: var(--primary);
+      color: #000;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      width: 100%;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #334155; border-radius: 34px; transition: .4s; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .4s; }
+    input:checked + .slider { background: var(--primary); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">SENTINEL-X</div>
+    <label class="switch">
+      <input type="checkbox" id="scan-toggle" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="content">
+    <div class="gauge-container">
+      <div class="gauge-circle" id="risk-gauge">
+        <div class="gauge-value">
+          <h1 id="risk-number">0</h1>
+          <span>Risk Score</span>
+        </div>
+      </div>
+      <p id="risk-explanation" style="font-size:11px; color:#94a3b8; text-align:center; margin-top:12px;">Monitoring environment safety...</p>
+    </div>
+
+    <div class="signals-grid">
+      <div class="signal-card">
+        <div class="signal-icon">🔗</div>
+        <div class="signal-label">Link Safety</div>
+        <div class="signal-value" id="val-links">SECURED</div>
+      </div>
+      <div class="signal-card">
+        <div class="signal-icon">💻</div>
+        <div class="signal-label">Device ID</div>
+        <div class="signal-value" id="val-device">GEN_X01</div>
+      </div>
+      <div class="signal-card">
+        <div class="signal-icon">📧</div>
+        <div class="signal-label">Email Rep</div>
+        <div class="signal-value" id="val-email">STABLE</div>
+      </div>
+      <div class="signal-card">
+         <div class="signal-icon">🌑</div>
+         <div class="signal-label">Dark Web</div>
+         <div class="signal-value" id="val-webz">NO MATCH</div>
+      </div>
+    </div>
+
+    <div class="section-title">Audit Trail</div>
+    <div id="threat-list">
+      <div style="font-size:11px; color:#64748b; text-align:center; padding:10px;">No critical threats logged.</div>
+    </div>
+
+    <button class="btn-action" id="view-full-logs">View Sentinel-X Vault</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

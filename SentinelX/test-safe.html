@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Link Safety Scanner Test Page</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #f4f4f9;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    h1 { color: #333; }
+    h2 { color: #555; }
+
+    .link-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .link-list li {
+      margin-bottom: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .description {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    a {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Link Safety Scanner Test Harness</h1>
+  <p>Use this page to verify that the Sentinel One extension identifies threats and leaves safe links alone.</p>
+
+  <div class="card">
+    <h2>Blacklisted Domains</h2>
+    <p class="description">These domains exist in the default blacklist and should be flagged immediately.</p>
+    <ul class="link-list">
+      <li>
+        <div class="description">Direct match for a malicious phishing domain</div>
+        <a href="http://malicious-phish.biz/get-malware">Dangerous Link</a>
+      </li>
+      <li>
+        <div class="description">Direct match for a fake account portal</div>
+        <a href="https://secure-bank-login.net/recover">Bank Login Trap</a>
+      </li>
+      <li>
+        <div class="description">Direct match for a fake shipping notice</div>
+        <a href="https://fedex-shipping-notice.icu/pay">Shipping Payment Scam</a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Suspicious Keyword Heuristics</h2>
+    <p class="description">These external links contain trigger terms such as verify, secure, and login.</p>
+    <ul class="link-list">
+      <li>
+        <div class="description">External link with multiple phishing terms</div>
+        <a href="https://random-site-unrelated.com/verify/secure/login">Verify Secure Login</a>
+      </li>
+      <li>
+        <div class="description">External link with identity wording</div>
+        <a href="https://another-site.example/identity/check">Identity Check</a>
+      </li>
+      <li>
+        <div class="description">External link ending in a suspicious TLD</div>
+        <a href="http://totally-normal-domain.top/welcome">High-Risk TLD</a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Safe Links</h2>
+    <p class="description">These should remain unflagged because they are trusted or harmless.</p>
+    <ul class="link-list">
+      <li>
+        <div class="description">Whitelisted domain</div>
+        <a href="https://google.com">Search on Google</a>
+      </li>
+      <li>
+        <div class="description">Whitelisted domain</div>
+        <a href="https://github.com">Check GitHub</a>
+      </li>
+      <li>
+        <div class="description">Internal fragment</div>
+        <a href="#top">Back to top</a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left: 5px solid #007bff;">
+    <h2>Custom Testing</h2>
+    <p>1. Open the Sentinel One popup.</p>
+    <p>2. Enter <code>wikipedia.org</code> and click <strong>Block</strong>.</p>
+    <p>3. Refresh this page and verify that <a href="https://wikipedia.org">Wikipedia</a> is now highlighted.</p>
+    <p>4. Click <strong>Trust Domain</strong> for the same host and verify the warning disappears after a rescan.</p>
+  </div>
+</body>
+</html>

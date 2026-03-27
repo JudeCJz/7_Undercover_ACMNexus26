@@ -1,0 +1,37 @@
+AI Context Log
+Date: 2026-03-27
+
+Project
+- Browser extension in `LinkSafetyScanner/`
+- Manifest V3 popup + background service worker + content script scanner
+- Purpose: locally flag suspicious links and block dangerous current sites
+
+Storage Keys
+- `blacklist`: blocked hostnames
+- `whitelist`: trusted hostnames
+- `keywords`: phishing heuristic keywords
+- `suspiciousTlds`: high-risk TLD suffixes
+- `isScanningEnabled`: global on/off toggle
+
+What Was Fixed
+- Popup now shows and manages both blocked and trusted domain lists
+- Popup buttons now rescan the active tab after changes so UI updates immediately
+- Current-domain block button now works with proper hostname normalization
+- Scanner state resets correctly between scans instead of keeping stale danger flags
+- Badge clears when scanning is disabled
+- Background install path now initializes missing `suspiciousTlds` and merges defaults safely
+- Content script no longer overwrites link hover handlers directly; unsafe link tooltip uses delegated listeners
+- Test page now uses domains that actually exist in the built-in blacklist
+- Mojibake/corrupted UI text was replaced with stable ASCII labels
+
+Current Architecture Notes
+- `background.js` owns default storage initialization and badge updates
+- `content.js` runs scans, updates sidebar/interstitial UI, and returns stats to the popup
+- `popup.js` manages storage lists, scan toggle, and active-tab stat refresh
+- `test-safe.html` is the quickest local validation page for extension behavior
+
+Suggested Next Work
+- Add import/export for custom intelligence lists
+- Add per-link action logging with timestamps
+- Add allow/block actions directly from the in-page sidebar
+- Add automated extension tests or a simple validation script
