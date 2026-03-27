@@ -308,11 +308,11 @@ document.addEventListener("DOMContentLoaded", () => {
         unsafeLinks: response.unsafeLinks || 0
       });
 
-      renderAuditList(response.scannedLinks || [], tabId);
+      renderAuditList(response.scannedLinks || [], tabId, response.isScanningEnabled);
     });
   }
 
-  function renderAuditList(links, tabId) {
+  function renderAuditList(links, tabId, isEnabled) {
     elements.auditContainer.innerHTML = "";
     
     if (!links || links.length === 0) {
@@ -372,11 +372,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function updateVisualThreatState(isDangerous) {
+  function updateVisualThreatState(isDangerous, isEnabled = true) {
     if (!particlesContainer) return;
 
     const options = particlesContainer.options;
-    if (isDangerous) {
+    
+    if (isEnabled === false) {
+      // Disabled Aesthetic: Grey/Dusty, Slow/Static
+      options.particles.color.value = "#4b5563";
+      options.particles.links.color.value = "#374151";
+      options.particles.move.speed = 0.4;
+      options.particles.links.width = 1;
+    } else if (isDangerous) {
       // Threat Aesthetic: Neon Red, Fast, Aggressive
       options.particles.color.value = "#ff0000";
       options.particles.links.color.value = "#ff0000";
@@ -398,12 +405,15 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.siteStatus.textContent = status;
 
     const isDangerous = (status === "THREAT DETECTED" || status === "WARNING");
-    updateVisualThreatState(isDangerous);
+    const isEnabled = (status !== "DISABLED" && status !== "OFFLINE");
+    updateVisualThreatState(isDangerous, isEnabled);
 
     if (status === "THREAT DETECTED") {
       elements.siteStatus.className = "stat-val dangerous-site";
     } else if (status === "WARNING") {
       elements.siteStatus.className = "stat-val warn-site";
+    } else if (status === "DISABLED" || status === "OFFLINE") {
+      elements.siteStatus.className = "stat-val";
     } else {
       elements.siteStatus.className = "stat-val safe-site";
     }

@@ -2,7 +2,7 @@ let totalLinks = 0;
 let unsafeLinks = 0;
 let isCurrentSiteDangerous = false;
 let scannedLinks = [];
-let isScanningEnabled = true;
+let isScanningEnabled = null; // Default to null until storage is checked
 
 // [Expert Security Shield] - Immediate Execution
 // This runs synchronously to catch the page BEFORE anything is parsed.
@@ -246,7 +246,10 @@ function showInterstitial(reason) {
   });
 }
 
+let isScanningInProgress = false;
 function runPatrolScan() {
+  if (isScanningInProgress) return;
+
   if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
     if (typeof chrome !== "undefined" && !chrome.runtime?.id) {
        restoreVisibility();
@@ -254,9 +257,11 @@ function runPatrolScan() {
     return;
   }
 
+  isScanningInProgress = true;
   chrome.storage.local.get(
     ["blacklist", "whitelist", "keywords", "suspiciousTlds", "sensitiveBrands", "dangerousExtensions", "urlShorteners", "isScanningEnabled"],
     (res) => {
+      isScanningInProgress = false;
       if (chrome.runtime.lastError) {
         restoreVisibility();
         return;
@@ -269,6 +274,13 @@ function runPatrolScan() {
         restoreVisibility();
         const existingOverlay = document.querySelector(".lss-interstitial");
         if (existingOverlay) existingOverlay.remove();
+
+        // Clear all highlighted links on the page
+        document.querySelectorAll(".lss-unsafe-link").forEach(link => {
+          link.classList.remove("lss-unsafe-link");
+          delete link.dataset.lssReason;
+          delete link.dataset.lssId;
+        });
         return;
       }
 
@@ -400,7 +412,7 @@ runPatrolScan();
 
 // Monitor for dynamic content
 const mutationObserver = new MutationObserver(() => {
-  if (isScanningEnabled && !isCurrentSiteDangerous) {
+  if (isScanningEnabled === true && !isCurrentSiteDangerous) {
     runPatrolScan();
   }
 });
