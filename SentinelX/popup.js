@@ -49,6 +49,14 @@ document.addEventListener("DOMContentLoaded", () => {
       withActiveHostname((hostname) => updateStorageLists("blacklist", hostname));
     });
 
+    // Accordion Toggle Logic
+    document.querySelectorAll(".accordion-header").forEach(header => {
+      header.addEventListener("click", () => {
+        const parent = header.parentElement;
+        parent.classList.toggle("open");
+      });
+    });
+
     elements.customUrl.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
