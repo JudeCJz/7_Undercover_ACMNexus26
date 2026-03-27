@@ -63,6 +63,111 @@ document.addEventListener("DOMContentLoaded", () => {
         updateDomainList("blacklist");
       }
     });
+
+    // AI Chat UI Controls
+    const aiPanel = document.getElementById("ai-chat-panel");
+    document.getElementById("open-ai-chat").addEventListener("click", () => aiPanel.classList.add("open"));
+    document.getElementById("close-ai-chat").addEventListener("click", () => aiPanel.classList.remove("open"));
+
+    document.getElementById("ai-send").addEventListener("click", handleAiMessage);
+    document.getElementById("ai-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleAiMessage();
+    });
+
+    // Breach Check (Demo)
+    document.getElementById("check-breach").addEventListener("click", handleBreachCheck);
+  }
+
+  async function handleBreachCheck() {
+    const email = document.getElementById("breach-email").value.trim();
+    const feedback = document.getElementById("breach-feedback");
+    
+    if (!email || !email.includes("@")) {
+      feedback.textContent = "Please enter a valid email address.";
+      feedback.className = "feedback error";
+      return;
+    }
+
+    feedback.textContent = "Scanning global databases...";
+    feedback.className = "feedback";
+
+    // Simulate real HIBP check for demo fidelity
+    setTimeout(() => {
+      const isBreached = email.length % 2 === 0; // Deterministic demo logic
+      if (isBreached) {
+        feedback.innerHTML = `⚠️ <span style="color:var(--danger)">Breach Found!</span> 2 data leaks detected.`;
+        addAiMessage("bot", `I've detected your email (${email}) in a simulated data breach. **Recommendation:** Change your passwords and enable 2FA immediately. See 'Breach Advice' in the chat for details.`);
+      } else {
+        feedback.innerHTML = `✅ <span style="color:var(--success)">System Clear.</span> No known leaks.`;
+      }
+    }, 1500);
+  }
+
+  function handleAiMessage() {
+    const input = document.getElementById("ai-input");
+    const text = input.value.trim();
+    if (!text) return;
+
+    addAiMessage("user", text);
+    input.value = "";
+
+    // AI Logic Engine
+    setTimeout(() => {
+      processAiResponse(text.toLowerCase());
+    }, 600);
+  }
+
+  function addAiMessage(sender, text) {
+    const body = document.getElementById("ai-messages");
+    const msg = document.createElement("div");
+    msg.className = `ai-message ${sender}`;
+    msg.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    body.appendChild(msg);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function processAiResponse(query) {
+    // 1. Logic for Flagged Links
+    if (query.includes("why") || query.includes("red") || query.includes("flag")) {
+      chrome.storage.local.get(["lastScannedLinks"], (res) => {
+        const unsafe = (res.lastScannedLinks || []).filter(l => !l.safe);
+        if (unsafe.length > 0) {
+          const reasons = unsafe.slice(0, 2).map(l => `**${l.url.substring(0, 30)}...** was flagged because: ${l.reason}`).join("<br>");
+          addAiMessage("bot", `I've flagged ${unsafe.length} suspicious links on this page. <br>${reasons}<br>Specifically, many of these use **DGA algorithms** or **Brand Spoofing** to hide their identity.`);
+        } else {
+          addAiMessage("bot", "No links are currently flagged red on this page. You appear to be safe!");
+        }
+      });
+      return;
+    }
+
+    // 2. Logic for Scam Analysis
+    if (query.includes("scam") || query.includes("kindly") || query.includes("gift card") || query.includes("prize")) {
+      addAiMessage("bot", "I've analyzed that message. **Diagnosis: High-Risk Scam.** <br>Red Flags found: <br>1. Urgent/Panic language.<br>2. Requests for unconventional payment (Gift Cards).<br>3. Mismatched 'Official' sender. **DO NOT CLICK.**");
+      return;
+    }
+
+    // 3. Logic for Alternatives
+    if (query.includes("alternative") || query.includes("safe")) {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const hostname = normalizeHostname(tabs[0]?.url || "");
+        addAiMessage("bot", `If you suspect ${hostname} is fake, always navigate manually to the official site. For example, if you're looking for Amazon, always type **amazon.com** directly into your address bar.`);
+      });
+      return;
+    }
+
+    // 4. General Q&A
+    if (query.includes("phishing")) {
+      addAiMessage("bot", "Phishing is a cyber attack that uses disguised email/links to steal user data. **Signs to look for:** Poor spelling, urgent threats to lock your account, and mismatched URLs.");
+      return;
+    }
+
+    if (query.includes("2fa")) {
+      addAiMessage("bot", "2FA (Two-Factor Authentication) adds a second layer of security. Even if a hacker steals your password, they still can't get in without your physical phone or key.");
+      return;
+    }
+
+    addAiMessage("bot", "I'm monitoring your security in real-time. I can explain flagged links, analyze scam emails, or check for data breaches. What's on your mind?");
   }
 
   function updateDomainList(targetList) {

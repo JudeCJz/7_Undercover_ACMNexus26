@@ -157,7 +157,7 @@
       gap: 8px;
     }
 
-    input[type="text"] {
+    input[type="text"], input[type="email"] {
       flex: 1;
       padding: 10px;
       border-radius: 8px;
@@ -167,7 +167,7 @@
       outline: none;
     }
 
-    input[type="text"]:focus {
+    input:focus {
       border-color: var(--primary);
     }
 
@@ -308,6 +308,19 @@
         <span class="stat-label">Isolated Threats</span>
         <span id="unsafe-links" class="stat-val">0</span>
       </div>
+      <button class="ai-btn" id="open-ai-chat">
+        <span style="font-size: 16px;">🤖</span> Ask Sentinel AI
+      </button>
+    </div>
+
+    <!-- Data Breach Section -->
+    <div class="panel">
+      <div class="section-title">Breach Monitor (HIBP)</div>
+      <div class="input-group">
+        <input type="email" id="breach-email" placeholder="you@example.com" />
+        <button id="check-breach" class="btn btn-primary" style="padding: 10px 16px;">Scan</button>
+      </div>
+      <div id="breach-feedback" class="feedback"></div>
     </div>
 
     <div class="panel">
@@ -342,6 +355,21 @@
       <div class="accordion-content">
         <div class="list-container" id="whitelist-view" style="margin-top: 0;"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- AI Chat Panel (Hidden by Default) -->
+  <div class="ai-chat-panel" id="ai-chat-panel">
+    <div class="ai-chat-header">
+      <h3 style="margin: 0;">Sentinel AI Advisor</h3>
+      <button class="btn btn-outline" id="close-ai-chat" style="padding: 4px 10px;">X</button>
+    </div>
+    <div class="ai-chat-body" id="ai-messages">
+      <div class="ai-message bot">Hello! I am Sentinel AI. How can I help secure your browsing session today?</div>
+    </div>
+    <div class="ai-chat-footer">
+      <input type="text" class="ai-input" id="ai-input" placeholder="Ask about phishing, 2FA, or paste a scam email..."/>
+      <button id="ai-send" class="btn btn-primary">Send</button>
     </div>
   </div>
 
