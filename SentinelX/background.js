@@ -42,14 +42,14 @@ async function syncDatabaseToNetworkShield() {
     
     // Create redirection rules (showing our custom blocked.html UI)
     const newRules = blacklist.slice(0, 50).map((domain, index) => ({
-      id: index + 1,
-      priority: 1,
+      id: 1000 + index, // Dedicated high-id range for user rules
+      priority: 100,    // Extreme priority to override everything
       action: { 
         type: "redirect", 
         redirect: { extensionPath: `/blocked.html?url=${encodeURIComponent(domain)}` } 
       },
       condition: {
-        urlFilter: domain,
+        urlFilter: domain, // DNR handles partial domain matches elegantly
         resourceTypes: ["main_frame"]
       }
     }));

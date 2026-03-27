@@ -222,48 +222,57 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateStorageLists(targetList, hostname) {
-    const oppositeList = targetList === "blacklist" ? "whitelist" : "blacklist";
-    chrome.storage.local.get([targetList, oppositeList], (res) => {
-      const nextTargetList = dedupeList([...(res[targetList] || []), hostname]);
-      const nextOppositeList = (res[oppositeList] || []).filter((item) => item !== hostname);
+    chrome.storage.local.get(["blacklist", "whitelist"], (res) => {
+      // Bulletproof Scrub: Ensure it's GONE from both lists before adding to target
+      const cleanBlacklist = (res.blacklist || []).filter(h => h !== hostname);
+      const cleanWhitelist = (res.whitelist || []).filter(h => h !== hostname);
+
+      let nextBlacklist = cleanBlacklist;
+      let nextWhitelist = cleanWhitelist;
+
+      if (targetList === "blacklist") {
+        nextBlacklist = dedupeList([...cleanBlacklist, hostname]);
+      } else {
+        nextWhitelist = dedupeList([...cleanWhitelist, hostname]);
+      }
 
       chrome.storage.local.set(
         {
-          [targetList]: nextTargetList,
-          [oppositeList]: nextOppositeList
+          blacklist: nextBlacklist,
+          whitelist: nextWhitelist
         },
         () => {
-          // [FIX] Auto-Redirect & Reload Logic
+          // [FIREWALL SYNC] Tab Redirect/Reload Logic
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const currentTab = tabs[0];
             if (!currentTab) return;
 
-            // If we are currently on the "Blocked" page and just trusted the site, release it!
             if (currentTab.url.includes("blocked.html") && targetList === "whitelist") {
               try {
                 const params = new URLSearchParams(new URL(currentTab.url).search);
                 const originalUrl = params.get("url");
                 if (originalUrl) {
                   const dest = originalUrl.includes("://") ? originalUrl : `https://${originalUrl}`;
-                  chrome.tabs.update(currentTab.id, { url: dest });
-                } else {
-                  chrome.tabs.reload(currentTab.id);
+                  chrome.tabs.remove(currentTab.id, () => {
+                    chrome.tabs.create({ url: dest, active: true });
+                  });
+                  return;
                 }
-              } catch (e) {
-                chrome.tabs.reload(currentTab.id);
-              }
-            } else {
-              chrome.tabs.reload(currentTab.id);
+              } catch (e) {}
             }
+            chrome.tabs.reload(currentTab.id);
           });
 
-          renderList(targetList, nextTargetList);
-          renderList(oppositeList, nextOppositeList);
+          // HUD Refresh
+          renderList("blacklist", nextBlacklist);
+          renderList("whitelist", nextWhitelist);
           elements.customUrl.value = hostname;
           setFeedback(
             targetList === "blacklist" ? `Blocked ${hostname}.` : `Trusted ${hostname}.`,
             "success"
           );
+          
+          refreshSmartButton();
           syncWithActiveTab({ forceRescan: true });
         }
       );
