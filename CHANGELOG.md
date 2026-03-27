@@ -42,3 +42,18 @@
 
 ### Issues Faced
 - None
+
+## 17:45
+
+### Features Added
+- Transitioned UI architecture to a high-performance Svelte + Vite setup
+- Initialized `frontend/` workspace to organize the team split
+- Reverted old HTML/CSS prototypes to enforce modern framework usage
+
+### Files Modified
+- CHANGELOG.md
+- Deleted `index.html`, `style.css`, `app.js`
+- Added `/frontend` scaffolding
+
+### Issues Faced
+- Non-empty directory conflicts during Vite init; resolved by isolating to the `/frontend` directory
