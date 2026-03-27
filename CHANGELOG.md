@@ -93,3 +93,20 @@
 ### Issues Faced
 - Synchronizing the real-time scan state across content scripts and the new dashboard popup.
 - Ensuring consistent UI rendering across different Chromium-based browsers (Edge/Brave).
+
+## 19:28
+
+### Features Added
+- Engineered a full-page "Security Interstitial" that blocks access to blacklisted sites until explicitly confirmed by the user.
+- Enhanced detection tooltips to include detailed threat reasons and the exact flagged URL for better auditing.
+- Implemented real-time dynamic syncing: the extension now enables/disables scanning and UI modifications immediately when the dashboard toggle is flipped, bypassing the need for a page refresh.
+- Added a "Return to Safety" navigation handler for blacklisted domains.
+
+### Files Modified
+- LinkSafetyScanner/content.js (Full-page interstitial and dynamic sync logic)
+- LinkSafetyScanner/styles.css (Interstitial and detailed tooltip CSS)
+- LinkSafetyScanner/popup.js (Improved real-time toggle handling)
+- CHANGELOG.md (Updated timeline)
+
+### Issues Faced
+- Managing complex z-index layering to ensure the security interstitial covers all modern web layouts, including fixed headers.

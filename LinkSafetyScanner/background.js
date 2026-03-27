@@ -1,35 +1,41 @@
-// Initialize database on install
+// Import scripts for large database modularity
+importScripts('database.js');
+
+// Initialize local database on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(["blacklist", "whitelist", "keywords"], (res) => {
-    if (!res.blacklist) {
+    // Only pre-fill if the database is currently empty
+    if (!res.blacklist || res.blacklist.length === 0) {
       chrome.storage.local.set({
-        blacklist: ["malicious.com", "phishing-site.net", "bad-actor.org"],
-        whitelist: ["google.com", "github.com"],
-        keywords: ["secure", "verify", "login", "update", "account"]
+        blacklist: INITIAL_DATABASE.blacklist,
+        whitelist: INITIAL_DATABASE.whitelist,
+        keywords: INITIAL_DATABASE.keywords,
+        isScanningEnabled: true
       });
+      console.log("Sentinel One Intelligence Database synchronized.");
     }
   });
 });
 
+// Manage Extension Badge UI based on current safety metrics
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "UPDATE_STATUS") {
     const tabId = sender.tab ? sender.tab.id : request.tabId;
     if (tabId) {
-      // Set badge based on status
       let text = "";
       let color = "";
       switch (request.status) {
         case "SAFE":
           text = "✓";
-          color = "#4CAF50"; // Green
+          color = "#22c55e"; // Success Green
           break;
         case "WARN":
           text = "!";
-          color = "#FFEB3B"; // Yellow
+          color = "#f59e0b"; // Warning Orange
           break;
         case "DANGER":
           text = "X";
-          color = "#F44336"; // Red
+          color = "#ef4444"; // Danger Red
           break;
       }
       chrome.action.setBadgeText({ text: text, tabId: tabId });
