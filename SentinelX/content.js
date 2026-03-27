@@ -352,6 +352,14 @@ function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveB
     if (!result.safe) {
       link.classList.add("lss-unsafe-link");
       link.dataset.lssReason = result.reason;
+      
+      // Bind hover events for the security tooltip
+      link.onmouseenter = (e) => showTooltip(link, result.reason, e);
+      link.onmouseleave = () => hideTooltip();
+    } else {
+      link.classList.remove("lss-unsafe-link");
+      link.onmouseenter = null;
+      link.onmouseleave = null;
     }
     auditedLinks.push({
       id: link.dataset.lssId,
@@ -361,6 +369,28 @@ function scanAllLinks(blacklist, whitelist, keywords, suspiciousTlds, sensitiveB
     });
   });
   return auditedLinks;
+}
+
+let activeTooltip = null;
+function showTooltip(link, reason, e) {
+  if (!isScanningEnabled) return;
+  hideTooltip();
+  
+  activeTooltip = document.createElement("div");
+  activeTooltip.className = "lss-tooltip";
+  activeTooltip.innerHTML = `<strong>LinPatrol Threat Analysis</strong>${reason}<br><span class="lss-url">${link.href}</span>`;
+  document.body.appendChild(activeTooltip);
+  
+  const rect = link.getBoundingClientRect();
+  activeTooltip.style.top = `${window.scrollY + rect.bottom + 8}px`;
+  activeTooltip.style.left = `${window.scrollX + rect.left}px`;
+}
+
+function hideTooltip() {
+  if (activeTooltip) {
+    activeTooltip.remove();
+    activeTooltip = null;
+  }
 }
 
 function notifyStatus(status) {

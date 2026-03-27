@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     siteStatus: document.getElementById("site-status"),
     totalLinks: document.getElementById("total-links"),
     unsafeLinks: document.getElementById("unsafe-links"),
+    threatScore: document.getElementById("threat-score"),
     auditContainer: document.getElementById("audit-view")
   };
 
@@ -384,18 +385,31 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.unsafeLinks.textContent = String(unsafeLinks);
     elements.siteStatus.textContent = status;
 
+    // Calculate Danger Rating out of 10
+    let score = 0;
+    if (totalLinks > 0) {
+      score = (unsafeLinks / totalLinks) * 10;
+    }
+    // Cap at 10.0 if somehow exceeded (weighted logic placeholder)
+    const displayScore = Math.min(score, 10).toFixed(1);
+    elements.threatScore.textContent = `${displayScore} / 10`;
+
     const isDangerous = (status === "THREAT DETECTED" || status === "WARNING");
     const isEnabled = (status !== "DISABLED" && status !== "OFFLINE");
     updateVisualThreatState(isDangerous, isEnabled);
 
     if (status === "THREAT DETECTED") {
       elements.siteStatus.className = "stat-val dangerous-site";
+      elements.threatScore.className = "stat-val dangerous-site";
     } else if (status === "WARNING") {
       elements.siteStatus.className = "stat-val warn-site";
+      elements.threatScore.className = "stat-val warn-site";
     } else if (status === "DISABLED" || status === "OFFLINE") {
       elements.siteStatus.className = "stat-val";
+      elements.threatScore.className = "stat-val";
     } else {
       elements.siteStatus.className = "stat-val safe-site";
+      elements.threatScore.className = "stat-val safe-site";
     }
   }
 
