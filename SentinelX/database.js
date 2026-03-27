@@ -1,7 +1,7 @@
 const INITIAL_DATABASE = {
   blacklist: [
     // High-Risk Malicious Domains (Exact matches needed)
-    "malicious-phish.biz", "secure-bank-login.net", "verify-your-identity.org",
+    "malicious.com", "malicious-phish.biz", "secure-bank-login.net", "verify-your-identity.org",
     "urgent-account-update.info", "free-giftcard-generator.xyz", "claim-your-prize.click",
     "locked-account-service.tk", "re-authenticate-now.fun", "unauthorized-access-warning.co",
     "official-support-portal.bid", "system-security-check.gq", "identity-theft-protection.ml",
@@ -18,19 +18,36 @@ const INITIAL_DATABASE = {
     "wikipedia.org", "youtube.com", "stackoverflow.com", "reddit.com"
   ],
   keywords: [
-    // Heuristic trigger words (Must match whole words in URL)
-    "verify", "secure", "login", "locked", "suspended", "identity", "breach", 
-    "compromised", "lottery", "urgent", "bypass", "unauthorized"
+    // High-fidelity heuristic triggers (Matches partials in URL context)
+    "malicious", "verify", "secure", "login", "locked", "suspended", "identity", 
+    "breach", "compromised", "lottery", "urgent", "bypass", "unauthorized",
+    "claim", "gift", "reward", "prize", "free", "account", "update", "signin",
+    "support", "official", "billing", "delivery", "parcel", "shipping",
+    "loyalty", "programme", "bonus", "winner", "win", "sweepstakes"
   ],
   suspiciousTlds: [
-    // TLDs only flagged if they appear at the end of a domain
+    // TLDs commonly used in ephemeral phishing/malware delivery
     ".tk", ".ml", ".ga", ".gq", ".cf", ".xyz", ".top", ".bid", ".click", ".pw",
-    ".icu", ".fun", ".live", ".link", ".online", ".website"
+    ".icu", ".fun", ".live", ".link", ".online", ".website", ".zip", ".mov", ".sbs", ".cam"
+  ],
+  sensitiveBrands: [
+    "google", "microsoft", "apple", "amazon", "facebook", "instagram", "twitter", 
+    "linkedin", "netflix", "paypal", "chase", "bank of america", "wellsfargo", 
+    "coca-cola", "cocacola", "fedex", "ups", "dhl", "metamask", "binance"
+  ],
+  dangerousExtensions: [
+    ".exe", ".msi", ".bat", ".cmd", ".scr", ".vbs", ".js", ".jse", ".wsf", ".wsh",
+    ".ps1", ".psm1", ".jar", ".iso", ".img", ".dmg", ".pkg", ".app"
+  ],
+  urlShorteners: [
+    "bit.ly", "tinyurl.com", "t.co", "goo.gl", "is.gd", "buff.ly", "ow.ly", "mzl.la"
   ]
 };
 
-try {
+// environment-aware export
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = { INITIAL_DATABASE };
-} catch(e) {
-  window.INITIAL_DATABASE = INITIAL_DATABASE;
+} else {
+  // Use self (works in both Window and ServiceWorker scopes)
+  self.INITIAL_DATABASE = INITIAL_DATABASE;
 }

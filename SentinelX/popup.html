@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SentinelX Dashboard</title>
+  <title>Link Safety Scanner</title>
   <style>
     :root {
       --bg: #0f172a;
-      --card: #1e293b;
+      --card-bg: #1e293b;
+      --panel-bg: rgba(255, 255, 255, 0.03);
       --primary: #38bdf8;
       --danger: #ef4444;
       --success: #22c55e;
@@ -16,173 +17,273 @@
     }
 
     body {
-      width: 400px;
+      width: 360px;
       margin: 0;
-      font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      overflow-x: hidden;
+      font: 13px/1.4 "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     }
 
     .header {
-      padding: 20px;
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding: 15px;
+      background: var(--card-bg);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .brand { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
-
-    .content { padding: 20px; }
-
-    /* Risk Score Gauge */
-    .gauge-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 25px;
-      position: relative;
-    }
-
-    .gauge-circle {
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      background: conic-gradient(var(--primary) 0%, #1e293b 0%);
+    .logo-container {
       display: flex;
       align-items: center;
-      justify-content: center;
-      position: relative;
-      transition: background 0.5s ease;
+      gap: 10px;
     }
 
-    .gauge-circle::after {
-      content: "";
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      background: var(--bg);
-      border-radius: 50%;
+    .logo-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary), #0ea5e9);
+      color: #001018;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
     }
 
-    .gauge-value {
-      position: relative;
-      z-index: 10;
-      text-align: center;
+    .header h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0.4px;
     }
 
-    .gauge-value h1 { margin: 0; font-size: 32px; font-weight: 900; }
-    .gauge-value span { font-size: 11px; text-transform: uppercase; color: var(--text-dim); }
+    .content {
+      padding: 15px;
+      display: grid;
+      gap: 14px;
+    }
 
-    /* Signals Grid */
-    .signals-grid {
+    .status-panel,
+    .panel {
+      background: var(--panel-bg);
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .stat-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+    }
+
+    .stat-val {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .dangerous-site { color: var(--danger); }
+    .safe-site { color: var(--success); }
+    .warn-site { color: var(--warning); }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin: 0 0 8px;
+      font-weight: 700;
+      letter-spacing: 0.7px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--text);
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+      transition: opacity 0.2s ease;
+    }
+
+    .btn:hover { opacity: 0.92; }
+    .btn-primary { background: var(--primary); color: #001018; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-outline { background: transparent; border: 1px solid rgba(255, 255, 255, 0.16); color: var(--text); }
+
+    .button-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 25px;
+      gap: 8px;
     }
 
-    .signal-card {
-      background: var(--card);
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.05);
-      text-align: center;
+    .list-container {
+      max-height: 114px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 8px;
+      margin-top: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
     }
 
-    .signal-icon { font-size: 18px; margin-bottom: 5px; }
-    .signal-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
-    .signal-value { font-size: 12px; font-weight: bold; margin-top: 4px; }
-
-    /* Activity Feed */
-    .section-title { font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin: 0 0 10px 0; font-weight: bold; letter-spacing: 1px; }
-
-    .threat-item {
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    .list-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     }
-    .threat-item:last-child { border-bottom: none; }
 
-    .threat-info { flex: 1; }
-    .threat-title { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
-    .threat-meta { font-size: 10px; color: var(--text-dim); }
-    .threat-badge { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800; background: var(--danger); }
+    .list-item:last-child {
+      border-bottom: none;
+    }
 
-    .btn-action {
-      background: var(--primary);
-      color: #000;
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      width: 100%;
-      font-weight: bold;
+    .list-item span:first-child {
+      overflow-wrap: anywhere;
+    }
+
+    .remove-item {
+      color: var(--danger);
       cursor: pointer;
-      margin-top: 10px;
+      font-size: 16px;
+      line-height: 1;
     }
 
-    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #334155; border-radius: 34px; transition: .4s; }
-    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .4s; }
-    input:checked + .slider { background: var(--primary); }
-    input:checked + .slider:before { transform: translateX(20px); }
+    .helper-text {
+      color: var(--text-dim);
+      font-size: 11px;
+      margin-top: 8px;
+    }
 
+    .feedback {
+      min-height: 18px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .feedback.success { color: var(--success); }
+    .feedback.error { color: var(--danger); }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      background-color: #334155;
+      transition: 0.25s;
+      border-radius: 999px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.25s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 10px; }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="brand">SENTINEL-X</div>
-    <label class="switch">
+    <div class="logo-container">
+      <div class="logo-badge">S</div>
+      <h2>Sentinel One</h2>
+    </div>
+    <label class="switch" title="Enable or disable scanning">
       <input type="checkbox" id="scan-toggle" checked>
       <span class="slider"></span>
     </label>
   </div>
 
   <div class="content">
-    <div class="gauge-container">
-      <div class="gauge-circle" id="risk-gauge">
-        <div class="gauge-value">
-          <h1 id="risk-number">0</h1>
-          <span>Risk Score</span>
-        </div>
+    <div class="status-panel">
+      <div class="stat-row">
+        <span class="stat-label">System State</span>
+        <span id="site-status" class="stat-val">Initializing...</span>
       </div>
-      <p id="risk-explanation" style="font-size:11px; color:#94a3b8; text-align:center; margin-top:12px;">Monitoring environment safety...</p>
-    </div>
-
-    <div class="signals-grid">
-      <div class="signal-card">
-        <div class="signal-icon">🔗</div>
-        <div class="signal-label">Link Safety</div>
-        <div class="signal-value" id="val-links">SECURED</div>
+      <div class="stat-row">
+        <span class="stat-label">External Links Detected</span>
+        <span id="total-links" class="stat-val">0</span>
       </div>
-      <div class="signal-card">
-        <div class="signal-icon">💻</div>
-        <div class="signal-label">Device ID</div>
-        <div class="signal-value" id="val-device">GEN_X01</div>
-      </div>
-      <div class="signal-card">
-        <div class="signal-icon">📧</div>
-        <div class="signal-label">Email Rep</div>
-        <div class="signal-value" id="val-email">STABLE</div>
-      </div>
-      <div class="signal-card">
-         <div class="signal-icon">🌑</div>
-         <div class="signal-label">Dark Web</div>
-         <div class="signal-value" id="val-webz">NO MATCH</div>
+      <div class="stat-row">
+        <span class="stat-label">Isolated Threats</span>
+        <span id="unsafe-links" class="stat-val">0</span>
       </div>
     </div>
 
-    <div class="section-title">Audit Trail</div>
-    <div id="threat-list">
-      <div style="font-size:11px; color:#64748b; text-align:center; padding:10px;">No critical threats logged.</div>
+    <div class="panel">
+      <div class="section-title">Domain Controls</div>
+      <div class="input-group">
+        <input type="text" id="custom-url" placeholder="example.com" />
+        <button id="add-blacklist" class="btn btn-danger" title="Add to blocked domains">Block</button>
+      </div>
+      <div class="button-grid" style="margin-top: 8px;">
+        <button id="add-current-blacklist" class="btn btn-outline">Block Current</button>
+        <button id="add-whitelist" class="btn btn-success">Trust Domain</button>
+      </div>
+      <div id="popup-feedback" class="feedback"></div>
+      <div class="helper-text">Blocking removes a domain from trust. Trusting removes it from blocklist.</div>
     </div>
 
-    <button class="btn-action" id="view-full-logs">View Sentinel-X Vault</button>
+    <div class="panel">
+      <div class="section-title">Blocked Domains</div>
+      <div class="list-container" id="blacklist-view"></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Trusted Domains</div>
+      <div class="list-container" id="whitelist-view"></div>
+    </div>
   </div>
 
   <script src="popup.js"></script>

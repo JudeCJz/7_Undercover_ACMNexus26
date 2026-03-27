@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel One | Connection Isolated</title>
+    <style>
+        :root {
+            --bg: #020617;
+            --card-bg: #0f172a;
+            --primary: #38bdf8;
+            --danger: #ef4444;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 40px;
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .shield-icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+            filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.3));
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+            color: var(--danger);
+        }
+
+        p {
+            font-size: 16px;
+            color: var(--text-dim);
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .threat-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: left;
+            margin-bottom: 32px;
+            border-left: 4px solid var(--danger);
+        }
+
+        .threat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: bold;
+            color: var(--danger);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .threat-url {
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            color: var(--text);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        .bg-glow {
+            position: absolute;
+            top: -50px;
+            left: -50px;
+            width: 200px;
+            height: 200px;
+            background: var(--danger);
+            filter: blur(100px);
+            opacity: 0.1;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="bg-glow"></div>
+        <div class="shield-icon">🛡️</div>
+        <h1>CONNECTION ISOLATED</h1>
+        <p>Sentinel One has prevented a malicious connection from being established with the host below. This site is currently on your local Intelligence Blacklist.</p>
+        
+        <div class="threat-panel">
+            <span class="threat-label">QUARANTINED DOMAIN</span>
+            <div id="blocked-url" class="threat-url">Searching audit logs...</div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" id="go-back">Return to Safety</button>
+            <button class="btn btn-outline" id="view-dashboard">Manage Blacklist</button>
+        </div>
+    </div>
+
+    <script>
+        // Extract the URL from our custom logic or search params
+        const urlParams = new URLSearchParams(window.location.search);
+        const blocked = urlParams.get('url') || "Known Threat Domain";
+        document.getElementById('blocked-url').textContent = blocked;
+
+        document.getElementById('go-back').onclick = () => window.history.back();
+        document.getElementById('view-dashboard').onclick = () => {
+             // In a real extension, we can't open the popup programmatically, 
+             // but we can send the user to the options page if we had one, or just a help page.
+             alert("Open the Sentinel One extension in your toolbar to remove this domain from your blacklist.");
+        };
+    </script>
+</body>
+</html>
