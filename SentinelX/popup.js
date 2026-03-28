@@ -128,10 +128,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // This ensures the side panel updates instantly when you switch tabs
     chrome.tabs.onActivated.addListener(() => syncWithActiveTab());
     
-    // This ensures it updates when a page finishes loading or changes URL
     chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       if (changeInfo.status === "complete") syncWithActiveTab();
-      document.getElementById("search-blocked").addEventListener("input", (e) => {
+    });
+
+    document.getElementById("search-blocked").addEventListener("input", (e) => {
       listQueries.blacklist = e.target.value.toLowerCase();
       chrome.storage.local.get(["blacklist"], (res) => renderList("blacklist", res.blacklist || []));
     });
@@ -140,7 +141,16 @@ document.addEventListener("DOMContentLoaded", () => {
       listQueries.whitelist = e.target.value.toLowerCase();
       chrome.storage.local.get(["whitelist"], (res) => renderList("whitelist", res.whitelist || []));
     });
-  });
+
+    // Real-time HUD Updates
+    chrome.runtime.onMessage.addListener((request) => {
+      if (request.type === "UPDATE_STATUS") {
+        syncWithActiveTab();
+      }
+    });
+
+    // Fallback polling for high-interaction sites like Gmail
+    setInterval(() => syncWithActiveTab(), 3000);
   }
 
 
@@ -169,47 +179,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function processAiResponse(query) {
-    // 1. Logic for Flagged Links
-    if (query.includes("why") || query.includes("red") || query.includes("flag")) {
-      chrome.storage.local.get(["lastScannedLinks"], (res) => {
-        const unsafe = (res.lastScannedLinks || []).filter(l => !l.safe);
-        if (unsafe.length > 0) {
-          const reasons = unsafe.slice(0, 2).map(l => `**${l.url.substring(0, 30)}...** was flagged because: ${l.reason}`).join("<br>");
-          addAiMessage("bot", `I've flagged ${unsafe.length} suspicious links on this page. <br>${reasons}<br>Specifically, many of these use **DGA algorithms** or **Brand Spoofing** to hide their identity.`);
-        } else {
-          addAiMessage("bot", "No links are currently flagged red on this page. You appear to be safe!");
-        }
-      });
-      return;
-    }
-
-    // 2. Logic for Scam Analysis
-    if (query.includes("scam") || query.includes("kindly") || query.includes("gift card") || query.includes("prize")) {
-      addAiMessage("bot", "I've analyzed that message. **Diagnosis: High-Risk Scam.** <br>Red Flags found: <br>1. Urgent/Panic language.<br>2. Requests for unconventional payment (Gift Cards).<br>3. Mismatched 'Official' sender. **DO NOT CLICK.**");
-      return;
-    }
-
-    // 3. Logic for Alternatives
-    if (query.includes("alternative") || query.includes("safe")) {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const hostname = normalizeHostname(tabs[0]?.url || "");
-        addAiMessage("bot", `If you suspect ${hostname} is fake, always navigate manually to the official site. For example, if you're looking for Amazon, always type **amazon.com** directly into your address bar.`);
-      });
-      return;
-    }
-
-    // 4. General Q&A
-    if (query.includes("phishing")) {
-      addAiMessage("bot", "Phishing is a cyber attack that uses disguised email/links to steal user data. **Signs to look for:** Poor spelling, urgent threats to lock your account, and mismatched URLs.");
-      return;
-    }
-
-    if (query.includes("2fa")) {
-      addAiMessage("bot", "2FA (Two-Factor Authentication) adds a second layer of security. Even if a hacker steals your password, they still can't get in without your physical phone or key.");
-      return;
-    }
-
-    addAiMessage("bot", "I'm monitoring your security in real-time. I can explain flagged links, analyze scam emails, or check for data breaches. What's on your mind?");
+    chrome.runtime.sendMessage({ type: "AI_CHAT", query }, (response) => {
+      const content = response?.content || "No intelligent response received.";
+      addAiMessage("bot", content);
+    });
   }
 
   function updateDomainList(targetList) {
@@ -389,17 +362,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderAuditList(links, tabId, isEnabled) {
     elements.auditContainer.innerHTML = "";
     
-    if (!links || links.length === 0) {
-      elements.auditContainer.innerHTML = "<div class='list-item' style='color:#64748b'>No links detected on this page.</div>";
+    // Filter to show ONLY doubtful or unsafe links as per user request
+    const suspiciousLinks = (links || []).filter(l => !l.safe);
+    
+    if (suspiciousLinks.length === 0) {
+      elements.auditContainer.innerHTML = "<div class='list-item' style='color:#64748b'>No suspicious links detected.</div>";
       return;
     }
 
-    // Sort: Unsafe first, then Safe
-    const sortedLinks = [...links].sort((a, b) => (a.safe === b.safe) ? 0 : a.safe ? 1 : -1);
+    // Sort: Unsafe (Likely red) first
+    suspiciousLinks.sort((a, b) => (a.safe === b.safe) ? 0 : a.safe ? 1 : -1);
 
-    sortedLinks.forEach(link => {
+    suspiciousLinks.forEach(link => {
       const item = document.createElement("div");
-      item.className = `audit-item ${link.safe ? 'safe' : 'unsafe'}`;
+      item.className = `audit-item unsafe`; // They are all unsafe/suspicious now
       item.innerHTML = `
         <div class="audit-url">${link.url}</div>
         <div class="audit-reason">${link.reason}</div>

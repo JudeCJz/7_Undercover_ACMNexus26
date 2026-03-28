@@ -14,7 +14,8 @@
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
     "sidePanel",
-    "notifications"
+    "notifications",
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"

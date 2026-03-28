@@ -15,7 +15,9 @@ const INITIAL_DATABASE = {
   whitelist: [
     "google.com", "github.com", "microsoft.com", "apple.com", "amazon.com",
     "facebook.com", "instagram.com", "twitter.com", "linkedin.com", "netflix.com",
-    "wikipedia.org", "youtube.com", "stackoverflow.com", "reddit.com"
+    "wikipedia.org", "youtube.com", "stackoverflow.com", "reddit.com", "mozilla.org",
+    "developer.mozilla.org", "googlevideo.com", "gstatic.com", "googleusercontent.com",
+    "cdc.gov", "who.int", "nih.gov", "adobe.com", "dropbox.com", "salesforce.com"
   ],
   keywords: [
     // High-fidelity heuristic triggers (Matches partials in URL context)

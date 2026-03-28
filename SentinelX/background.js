@@ -1,6 +1,12 @@
 // Import scripts for large database modularity
 importScripts('database.js');
 
+const LM_STUDIO_URL = 'http://localhost:1234/v1/chat/completions';
+const MODEL_ID = 'qwen-4b'; // Specifically requested 4B model
+
+// Maintain a set of suspicious URLs for context menu targeting
+let suspiciousUrls = new Set();
+
 // 1. Initial Intelligence Database Flash-Sync
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(["blacklist", "whitelist", "keywords", "suspiciousTlds", "dangerousExtensions", "urlShorteners"], (res) => {
@@ -96,6 +102,180 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.action.setBadgeText({ text: badgeText, tabId: tabId });
       chrome.action.setBadgeBackgroundColor({ color: color, tabId: tabId });
     }
+  }
+
+  // Handle AI analysis requests from content scripts and popup
+  if (request.type === "AI_GET_VERDICT") {
+    getAiVerdict(request.url, request.metadata)
+      .then(sendResponse)
+      .catch((error) => sendResponse({ error: error.message }));
+    return true; // Keep channel open
+  }
+
+  // Handle general AI chat from popup
+  if (request.type === "AI_CHAT") {
+    processChat(request.query)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ error: err.message }));
+    return true;
+  }
+
+  // Update suspicious URLs set for context menu filtering
+  if (request.type === "REGISTER_SUSPICIOUS_LINKS") {
+    request.urls.forEach(u => suspiciousUrls.add(u));
+    updateContextMenu();
+  }
+});
+
+// 4. AI Engine: LM Studio Integration (Qwen) with Concurrency Control
+const aiQueue = [];
+let activeRequests = 0;
+const MAX_CONCURRENT_REQUESTS = 3;
+
+async function processQueue() {
+  while (activeRequests < MAX_CONCURRENT_REQUESTS && aiQueue.length > 0) {
+    activeRequests++;
+    const { url, metadata, resolve, reject } = aiQueue.shift();
+    
+    (async () => {
+      try {
+        const result = await performAiFetch(url, metadata);
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      } finally {
+        activeRequests--;
+        processQueue();
+      }
+    })();
+  }
+}
+
+async function getAiVerdict(url, metadata = {}) {
+  return new Promise((resolve, reject) => {
+    aiQueue.push({ url, metadata, resolve, reject });
+    processQueue();
+  });
+}
+
+async function performAiFetch(url, metadata = {}) {
+  const prompt = `System: You are SentinelX Cybersecurity AI. Analyze the URL and context.
+Provide a definitive verdict: SAFE or UNSAFE.
+Provide a 1-sentence reason starting with "REASON: ".
+
+Link: ${url}
+Context: ${JSON.stringify(metadata)}
+
+Response format:
+VERDICT: [SAFE or UNSAFE]
+REASON: [Specific reason why it is safe or unsafe]`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // Increased timeout to 12s for Qwen-4B
+
+    const response = await fetch(LM_STUDIO_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL_ID,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1,
+        max_tokens: 150
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content || "";
+    
+    // Improved detection logic
+    const isUnsafe = /UNSAFE/i.test(content) || /MALICIOUS/i.test(content) || /DANGER/i.test(content);
+    
+    let reasonLine = "No immediate threats detected.";
+    const matches = content.match(/REASON:\s*(.*)/i);
+    if (matches && matches[1]) {
+      reasonLine = matches[1].replace(/[\[\]]/g, '').trim();
+    } else {
+      const lines = content.split('\n').filter(l => l.trim().length > 5);
+      if (lines.length > 0) reasonLine = lines[lines.length - 1].trim();
+    }
+
+    return { 
+      safe: !isUnsafe, 
+      reason: reasonLine.slice(0, 100)
+    };
+  } catch (err) {
+    console.error("SentinelX AI Error:", err);
+    return { 
+      safe: true, // Fail-safe to avoid blocking everything accidentally
+      reason: "Analysis error (AI Offline)." 
+    };
+  }
+}
+
+async function processChat(query) {
+  const prompt = `System: You are LinPatrol AI, a cybersecurity expert. Provide a VERY BRIEF response (max 2-3 lines). Be precise and professional.
+User Query: ${query}`;
+
+  try {
+    const response = await fetch(LM_STUDIO_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL_ID,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 150
+      })
+    });
+
+    const data = await response.json();
+    let content = data.choices[0].message.content.trim();
+    
+    // Final enforcement of the 2-3 line rule
+    const lines = content.split('\n').filter(l => l.trim()).slice(0, 3);
+    return { content: lines.join('\n') };
+  } catch (err) {
+    return { content: "I'm currently unable to connect to my local intelligence engine (LM Studio). Please ensure it's running on port 1234." };
+  }
+}
+
+// 5. AI-Driven Context Menu
+function updateContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    if (suspiciousUrls.size === 0) return;
+
+    // Filter out invalid URL patterns (only http/https)
+    const patterns = Array.from(suspiciousUrls)
+      .filter(u => u.startsWith('http'))
+      .map(u => u.replace(/[?#].*$/, '') + '*'); // Wildcard for params
+
+    if (patterns.length === 0) return;
+
+    chrome.contextMenus.create({
+      id: "linpatrol-ai-why",
+      title: "LinPatrol AI: Why is this link unsafe?",
+      contexts: ["link"],
+      targetUrlPatterns: patterns.slice(0, 100) // Limited for performance
+    });
+  });
+}
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "linpatrol-ai-why") {
+    getAiVerdict(info.linkUrl).then(result => {
+      chrome.tabs.sendMessage(tab.id, {
+        type: "AI_SHOW_ALERT",
+        url: info.linkUrl,
+        verdict: result.safe ? "SAFE" : "UNSAFE",
+        reason: result.reason
+      });
+    });
   }
 });
 
